@@ -1,0 +1,78 @@
+HeadYaw:
+minAngle -2.08566856384 maxAngle 2.08566856384
+maxVelocity 8.26797389984 maxTorque 1.20000004768
+HeadPitch:
+minAngle -0.671951770782 maxAngle 0.514872133732
+maxVelocity 7.19407272339 maxTorque 1.20000004768
+LShoulderPitch:
+minAngle -2.08566856384 maxAngle 2.08566856384
+maxVelocity 8.26797389984 maxTorque 1.20000004768
+LShoulderRoll:
+minAngle -0.314159274101 maxAngle 1.32645022869
+maxVelocity 7.19407272339 maxTorque 1.20000004768
+LElbowYaw:
+minAngle -2.08566856384 maxAngle 2.08566856384
+maxVelocity 8.26797389984 maxTorque 1.20000004768
+LElbowRoll:
+minAngle -1.54461634159 maxAngle -0.0349065847695
+maxVelocity 7.19407272339 maxTorque 1.20000004768
+LWristYaw:
+minAngle -1.82386910915 maxAngle 1.82386910915
+maxVelocity 24.6229305267 maxTorque 0.759999990463
+LHand:
+minAngle 0.0 maxAngle 1.0
+maxVelocity 8.32999992371 maxTorque 0.550000011921
+LHipYawPitch:
+minAngle -1.14528501034 maxAngle 0.740717709064
+maxVelocity 4.16173744202 maxTorque 3.20000004768
+LHipRoll:
+minAngle -0.379434585571 maxAngle 0.790459632874
+maxVelocity 4.16173744202 maxTorque 3.20000004768
+LHipPitch:
+minAngle -1.53588974476 maxAngle 0.483979791403
+maxVelocity 6.40239143372 maxTorque 3.20000004768
+LKneePitch:
+minAngle -0.092327915132 maxAngle 2.11254644394
+maxVelocity 6.40239143372 maxTorque 3.20000004768
+LAnklePitch:
+minAngle -1.18944191933 maxAngle 0.922581017017
+maxVelocity 6.40239143372 maxTorque 3.20000004768
+LAnkleRoll:
+minAngle -0.397760540247 maxAngle 0.768992066383
+maxVelocity 4.16173744202 maxTorque 3.20000004768
+RHipYawPitch:
+minAngle -1.14528501034 maxAngle 0.740717709064
+maxVelocity 4.16173744202 maxTorque 3.20000004768
+RHipRoll:
+minAngle -0.790459632874 maxAngle 0.379434585571
+maxVelocity 4.16173744202 maxTorque 3.20000004768
+RHipPitch:
+minAngle -1.53588974476 maxAngle 0.483979791403
+maxVelocity 6.40239143372 maxTorque 3.20000004768
+RKneePitch:
+minAngle -0.092327915132 maxAngle 2.11254644394
+maxVelocity 6.40239143372 maxTorque 3.20000004768
+RAnklePitch:
+minAngle -1.18630027771 maxAngle 0.932005822659
+maxVelocity 6.40239143372 maxTorque 3.20000004768
+RAnkleRoll:
+minAngle -0.768992066383 maxAngle 0.397935062647
+maxVelocity 4.16173744202 maxTorque 3.20000004768
+RShoulderPitch:
+minAngle -2.08566856384 maxAngle 2.08566856384
+maxVelocity 8.26797389984 maxTorque 1.20000004768
+RShoulderRoll:
+minAngle -1.32645022869 maxAngle 0.314159274101
+maxVelocity 7.19407272339 maxTorque 1.20000004768
+RElbowYaw:
+minAngle -2.08566856384 maxAngle 2.08566856384
+maxVelocity 8.26797389984 maxTorque 1.20000004768
+RElbowRoll:
+minAngle 0.0349065847695 maxAngle 1.54461634159
+maxVelocity 7.19407272339 maxTorque 1.20000004768
+RWristYaw:
+minAngle -1.82386910915 maxAngle 1.82386910915
+maxVelocity 24.6229305267 maxTorque 0.759999990463
+RHand:
+minAngle 0.0 maxAngle 1.0
+maxVelocity 8.32999992371 maxTorque 0.550000011921

@@ -1,0 +1,12 @@
+Model Type :  naoH25
+Head Version :  VERSION_50
+Body Version :  VERSION_50
+Laser :  False
+Legs :  True
+Arms :  True
+Extended Arms :  True
+Hands :  True
+Arm Version :  VERSION_50
+Number of Legs :  2
+Number of Arms :  2
+Number of Hands :  2

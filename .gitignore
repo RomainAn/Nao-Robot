@@ -2,8 +2,8 @@
 # 添加过滤文件要在新的一行,并且其后不能有任何字符(包括空格,注释),否则过滤失败
 #
 
-#编译生成的中间文件.o文件
-#*.o
+#编译生成的中间文件.pyc文件
+*.pyc
 #简单编译生成的可执行文件
 #a.out
 #Mac os X生成的调试信息
@@ -14,5 +14,9 @@
 *.swp
 #ctags生成的tags文件
 #tags
-#Nao robot ptyhon sdk
+
+#过滤Nao robot ptyhon sdk，避免上传大文件
 /python/pynaoqi-python2.7-2.1.0.19-mac64/
+
+# 过滤脚本配置文件
+/python/set_python_path.sh
