@@ -3,12 +3,12 @@
 #################################################################
 #   Copyright (C) 2015 Sean Guo. All rights reserved.
 #														  
-#	> File Name:        < template.py >
+#	> File Name:        < set_wakeup.py >
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
-#	> Created Time:     < 2015/03/16 >
+#	> Created Time:     < 2015/03/18 >
 #	> Last Changed: 
-#	> Description:		
+#	> Description:		Wake up rebot.
 #################################################################
 
 import argparse
@@ -16,13 +16,9 @@ from naoqi import ALProxy
 
 def main(robot_IP, robot_PORT=9559):
 	# ----------> Connect to robot <----------
-	tts = ALProxy("ALTextToSpeech", robot_IP, robot_PORT)
 	motion = ALProxy("ALMotion", robot_IP, robot_PORT)
-	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
-	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
-	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
-
 	# ----------> <----------
+	motion.wakeUp()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
