@@ -18,9 +18,12 @@ def main(robot_IP, robot_PORT=9559):
 	# ----------> Connect to robot <----------
 	tts = ALProxy("ALTextToSpeech", robot_IP, robot_PORT)
 	motion = ALProxy("ALMotion", robot_IP, robot_PORT)
-	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
-	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
-	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
+#	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
+#	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
+#	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
+#	battery = ALProxy("ALBattery", robot_ip, robot_port)
+#	autonomous = ALProxy("ALAutonomousLife", robot_IP, robot_PORT)
+#	autonomous.setState("disabled") # turn ALAutonomousLife off
 
 	# ----------> <----------
 

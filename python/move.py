@@ -20,7 +20,7 @@ motion.wakeUp()
 
 # void ALMotionProxy::moveInit()
 # Initializes the move process. Checks the robot pose and takes a right posture. This is blocking called.
-# 初始化移动进程，检查机器人的姿势并切换为正确的姿势。调用此程序前需要打开电机，否则调用无效。
+# 初始化移动进程，检查机器人的姿势并切换为正确的姿势。调用此程序前需要打开电机(即wakeUp)，否则调用无效。
 motion.moveInit()
 
 # void ALMotionProxy::moveTo(const float& x, const float& y, const float& theta)
