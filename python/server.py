@@ -6,7 +6,7 @@
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/03/23 >
-#	> Last Changed: 
+#	> Last Changed:  	< 2015/03/25 >
 #	> Description:		远程控制-服务器端
 #						接受客户端发来的指令，执行相应功能。
 #################################################################
@@ -16,6 +16,7 @@
 import argparse
 from naoqi import ALProxy
 import socket
+import sys		# sys.exit() 退出main函数
 
 LISTEN_PORT = 8001 # 服务器监听端口
 
@@ -34,6 +35,8 @@ COMMAND_TURNRIGHT = 'TURNRIGHT'
 
 COMMAND_DISCONNECT = 'DISCONNECT'
 
+COMMAND_BATTERY = 'BATTERY'
+
 # flag
 CONNECT = False  		# 客户端连接Flag	
 
@@ -44,7 +47,7 @@ def main(robot_IP, robot_PORT=9559):
 	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
 	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
 	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
-	battery = ALProxy("ALBattery", robot_ip, robot_port)
+	battery = ALProxy("ALBattery", robot_IP, robot_PORT)
 	autonomous = ALProxy("ALAutonomousLife", robot_IP, robot_PORT)
 	autonomous.setState("disabled") # turn ALAutonomousLife off
 
@@ -54,7 +57,12 @@ def main(robot_IP, robot_PORT=9559):
 	sock.bind((robot_IP, LISTEN_PORT))
 	sock.listen(10)
 	while True:	# 等待客户端连接，单线程监听单一客户端
-		connection,address = sock.accept()
+		try:
+			connection,address = sock.accept()
+		except KeyboardInterrupt: # CTRL+C, 关闭服务器端程序;
+			print ""
+			print "Interrupted by user, shutting down"
+			sys.exit(0)
 		CONNECT = True
 		while CONNECT == True:
 			try:
@@ -129,6 +137,8 @@ def main(robot_IP, robot_PORT=9559):
 				elif buf == COMMAND_DISCONNECT:
 					CONNECT = False
 					connection.send("disconnect from robot server.")
+				elif buf == COMMAND_BATTERY:	# 返回机器人电量(单位: %)
+   					connection.send(str(battery.getBatteryCharge()) + "%")	
 				else:
 					connection.send(buf + ": command not found")
 			except socket.timeout:

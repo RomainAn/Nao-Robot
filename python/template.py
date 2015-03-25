@@ -21,7 +21,7 @@ def main(robot_IP, robot_PORT=9559):
 #	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
 #	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
 #	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
-#	battery = ALProxy("ALBattery", robot_ip, robot_port)
+#	battery = ALProxy("ALBattery", robot_IP, robot_PORT)
 #	autonomous = ALProxy("ALAutonomousLife", robot_IP, robot_PORT)
 #	autonomous.setState("disabled") # turn ALAutonomousLife off
 
