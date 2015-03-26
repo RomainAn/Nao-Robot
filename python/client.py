@@ -22,6 +22,8 @@ LISTEN_PORT = 8001 # 服务器监听端口
 
 # command 
 COMMAND_DISCONNECT = 'DISCONNECT'
+COMMAND_HEADYAW = 'HEADYAW'     # 头左右
+COMMAND_HEADPITCH = 'HEADPITCH' # 头上下
 
 # flag
 CONNECT = False
@@ -38,6 +40,10 @@ def main(robot_IP, robot_PORT=9559):
 		command = raw_input("Command code:")
 		# socket 发送指令
 		sock.send(command)
+		if command == COMMAND_HEADYAW or command == COMMAND_HEADPITCH:
+	   		value = raw_input("Value:")
+			sock.send(value)
+
 		# socket 接受返回消息
 		buf = sock.recv(1024)
 		print buf
