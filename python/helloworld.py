@@ -1,5 +1,6 @@
-from naoqi import ALProxy
+#! /usr/bin/env python
 #-*- coding: utf-8 -*-
+from naoqi import ALProxy
 #必须要加上面一行代码，表示使用utf-8编码格式，否则python解释器不能识别汉字编码，运行将出现句法错误
 
 # Python SDK key concepts
