@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 #-*- coding: utf-8 -*-
 #################################################################
 #   Copyright (C) 2015 Sean Guo. All rights reserved.
@@ -10,8 +11,6 @@
 #	> Description:		编写一个python模块，响应机器人ChestButton事件，
 #						并配置nao内部~/naoqi/preferences/autoload.ini实现开机自启;
 #################################################################
-
-#! /usr/bin/env python
 
 """ Say 'Hello' each time pressed (TripleClick) Nao ChestButton
 
@@ -63,7 +62,7 @@ class TripleClickModule(ALModule):
 		memory.unsubscribeToEvent("ALChestButton/TripleClickOccurred",
 			"TripleClick")
 
-		self.tts.say("Oh!You're Breaking My Heart~")
+		self.tts.say("Oh!You are breaking my heart.")
 
         # Subscribe again to the event
 		memory.subscribeToEvent("ALChestButton/TripleClickOccurred",
