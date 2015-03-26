@@ -49,6 +49,9 @@ SENSOR	= False			# 传感器监控Flag, 为True则有线程定时发送数据；
 # 全局变量，供其他函数使用
 ROBOT_IP = '192.168.1.100'
 ROBOT_PORT = 9559
+connection = None
+battery = None
+memory = None
 
 def main(robot_IP, robot_PORT=9559):
 	
@@ -61,8 +64,11 @@ def main(robot_IP, robot_PORT=9559):
 	tts = ALProxy("ALTextToSpeech", robot_IP, robot_PORT)
 	motion = ALProxy("ALMotion", robot_IP, robot_PORT)
 	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
+	global memory
 	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
 	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
+	global battery
+	battery = ALProxy("ALBattery", ROBOT_IP, ROBOT_PORT)
 	autonomous = ALProxy("ALAutonomousLife", robot_IP, robot_PORT)
 	autonomous.setState("disabled") # turn ALAutonomousLife off
 
@@ -73,6 +79,7 @@ def main(robot_IP, robot_PORT=9559):
 
 	try:
 		while True:	# 等待客户端连接，单线程监听单一客户端
+			global connection
 			connection,address = sock.accept()
 			CONNECT = True
 			while CONNECT == True:
@@ -85,69 +92,69 @@ def main(robot_IP, robot_PORT=9559):
 					if buf == COMMAND_WAKEUP:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-						connection.send("Robot Motion: [ Wakeup ]")
+						connection.send("Robot Motion: [ Wakeup ]\r")
 					elif buf == COMMAND_REST:
 						if motion.robotIsWakeUp() == True: 
 							motion.post.rest()
-						connection.send("Robot Motion: [ Rest ]")
+						connection.send("Robot Motion: [ Rest ]\r")
 					elif buf == COMMAND_FORWARD:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-							connection.send("Robot Motion: [ Wakeup ]")
+							connection.send("Robot Motion: [ Wakeup ]\r")
 							motion.post.moveInit()
-							connection.send("Robot Motion: [ MoveInit ]")
+							connection.send("Robot Motion: [ MoveInit ]\r")
 						#motion.post.moveTo(0.3, 0, 0)
 						motion.move(0.1,0,0) # 固定速率持续行走
-						connection.send("Robot Motion: [ Forward ]")
+						connection.send("Robot Motion: [ Forward ]\r")
 					elif buf == COMMAND_BACK:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-							connection.send("Robot Motion: [ Wakeup ]")
+							connection.send("Robot Motion: [ Wakeup ]\r")
 							motion.post.moveInit()
-							connection.send("Robot Motion: [ MoveInit ]")
+							connection.send("Robot Motion: [ MoveInit ]\r")
 						#motion.post.moveTo(-0.1, 0, 0)
 						motion.move(-0.1,0,0)
-						connection.send("Robot Motion: [ Back ]")
+						connection.send("Robot Motion: [ Back ]\r")
 					elif buf == COMMAND_LEFT:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-							connection.send("Robot Motion: [ Wakeup ]")
+							connection.send("Robot Motion: [ Wakeup ]\r")
 							motion.post.moveInit()
-							connection.send("Robot Motion: [ MoveInit ]")
+							connection.send("Robot Motion: [ MoveInit ]\r")
 						#motion.post.moveTo(0, 0.1, 0)
 						motion.move(0,0.1,0)
-						connection.send("Robot Motion: [ Left ]")
+						connection.send("Robot Motion: [ Left ]\r")
 					elif buf == COMMAND_RIGHT:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-							connection.send("Robot Motion: [ Wakeup ]")
+							connection.send("Robot Motion: [ Wakeup ]\r")
 							motion.post.moveInit()
-							connection.send("Robot Motion: [ MoveInit ]")
+							connection.send("Robot Motion: [ MoveInit ]\r")
 						#motion.post.moveTo(0, -0.1, 0)
 						motion.move(0,-0.1,0)
-						connection.send("Robot Motion: [ Right ]")
+						connection.send("Robot Motion: [ Right ]\r")
 					elif buf == COMMAND_STOP:
 						motion.stopMove()
-						connection.send("Robot Motion: [ stop move ]")
+						connection.send("Robot Motion: [ stop move ]\r")
 					elif buf == COMMAND_TURNRIGHT:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-							connection.send("Robot Motion: [ Wakeup ]")
+							connection.send("Robot Motion: [ Wakeup ]\r")
 							motion.post.moveInit()
-							connection.send("Robot Motion: [ MoveInit ]")
+							connection.send("Robot Motion: [ MoveInit ]\r")
 						motion.move(0, 0, -0.3)
-						connection.send("Robot Motion: [ turn right ]")
+						connection.send("Robot Motion: [ turn right ]\r")
 					elif buf == COMMAND_TURNLEFT:
 						if motion.robotIsWakeUp() == False: 
 							motion.post.wakeUp()
-							connection.send("Robot Motion: [ Wakeup ]")
+							connection.send("Robot Motion: [ Wakeup ]\r")
 							motion.post.moveInit()
-							connection.send("Robot Motion: [ MoveInit ]")
+							connection.send("Robot Motion: [ MoveInit ]\r")
 						motion.move(0, 0, 0.3)
-						connection.send("Robot Motion: [ turn left ]")
+						connection.send("Robot Motion: [ turn left ]\r")
 					elif buf == COMMAND_DISCONNECT:
 						CONNECT = False
-						connection.send("disconnect from robot server.")
+						connection.send("disconnect from robot server.\r")
 					elif buf == COMMAND_HEADYAW:
 						# 头部左右转动(Yaw轴)
 						buf2 = connection.recv(1024)	# 读取Yaw值	
@@ -155,7 +162,7 @@ def main(robot_IP, robot_PORT=9559):
 						angles = (int(buf2) - 50)  
 						motion.setStiffnesses("Head", 1.0)
 						motion.setAngles("HeadYaw", angles * almath.TO_RAD, 0.2) # 以10%的速度转换angles角度
-						connection.send("Robot Motion: [ head raw ]")
+						connection.send("Robot Motion: [ head raw ]\r")
 					elif buf == COMMAND_HEADPITCH:
 						# 头部上下转动(Pitch轴)
 						buf2 = connection.recv(1024)	# 读取Pitch值	
@@ -163,7 +170,7 @@ def main(robot_IP, robot_PORT=9559):
 						angles = (int(buf2) - 50) * 2
 						motion.setStiffnesses("Head", 1.0)
 						motion.setAngles("HeadPitch", angles * almath.TO_RAD, 0.2) # 以10%的速度转换angles角度
-						connection.send("Robot Motion: [ head pitch ]")
+						connection.send("Robot Motion: [ head pitch ]\r")
 					elif buf == COMMAND_SENSOR:
 						global SENSOR
 						if SENSOR == False:
@@ -173,9 +180,9 @@ def main(robot_IP, robot_PORT=9559):
 						else:
 							# 第二次发送COMMAND_SENSOR, 则关闭线程
 							SENSOR = False	# 设置标识位，线程检测后自己退出。
-						connection.send("Robot Motion: [ send sensor value ]")
+						connection.send("Robot Motion: [ send sensor value ]\r")
 					else:
-						connection.send(buf + ": command not found")
+						connection.send(buf + ": command not found\r")
 				except socket.timeout:
 					print 'time out'
 			connection.close()	# 关闭当前socket连接，进入下一轮循环
@@ -187,9 +194,10 @@ def main(robot_IP, robot_PORT=9559):
 def sensor(interval):
 	''' 每interval秒，发送一次传感器数据
 	'''
-	battery = ALProxy("ALBattery", ROBOT_IP, ROBOT_PORT)
 	while SENSOR == True:
-		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()))
+		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()) + "\r")
+		connection.send("SONAR1" + "#" + str(memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")) + "\r")
+		connection.send("SONAR2" + "#" + str(memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")) + "\r")
 #		print "BATTERY" + "#" + str(battery.getBatteryCharge())
 		time.sleep(interval)
 	# SENSOR == False
