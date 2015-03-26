@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 #-*- coding: utf-8 -*-
 #################################################################
 #   Copyright (C) 2015 Sean Guo. All rights reserved.
@@ -6,12 +7,10 @@
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/03/23 >
-#	> Last Changed:  	< 2015/03/25 >
+#	> Last Changed:  	< 2015/03/26 >
 #	> Description:		远程控制-服务器端
 #						接受客户端发来的指令，执行相应功能。
 #################################################################
-
-#! /usr/bin/env python
 
 import argparse
 from naoqi import ALProxy
