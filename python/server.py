@@ -18,6 +18,8 @@ from naoqi import ALProxy
 import socket
 import sys		# sys.exit() 退出main函数
 import almath 	# 角度转弧度(almath.TO_RAD)
+import thread	# 多线程
+import time		# 延时函数 time.sleep(1)
 
 LISTEN_PORT = 8001 # 服务器监听端口
 
@@ -35,23 +37,32 @@ COMMAND_TURNLEFT = 'TURNLEFT'
 COMMAND_TURNRIGHT = 'TURNRIGHT'
 
 COMMAND_DISCONNECT = 'DISCONNECT'
-
-COMMAND_BATTERY = 'BATTERY'
+COMMAND_SENSOR = 'SENSOR'
 
 COMMAND_HEADYAW = 'HEADYAW' 	# 头左右
 COMMAND_HEADPITCH = 'HEADPITCH' # 头上下
 
 # flag
 CONNECT = False  		# 客户端连接Flag	
+SENSOR	= False			# 传感器监控Flag, 为True则有线程定时发送数据；
+
+# 全局变量，供其他函数使用
+ROBOT_IP = '192.168.1.100'
+ROBOT_PORT = 9559
 
 def main(robot_IP, robot_PORT=9559):
+	
+	global ROBOT_IP
+	global ROBOT_PORT
+	ROBOT_IP = robot_IP
+	ROBOT_PORT = robot_PORT
+
 	# ----------> Connect to robot <----------
 	tts = ALProxy("ALTextToSpeech", robot_IP, robot_PORT)
 	motion = ALProxy("ALMotion", robot_IP, robot_PORT)
 	posture = ALProxy("ALRobotPosture", robot_IP, robot_PORT)
 	memory = ALProxy("ALMemory", robot_IP, robot_PORT)
 	leds = ALProxy("ALLeds", robot_IP, robot_PORT)
-	battery = ALProxy("ALBattery", robot_IP, robot_PORT)
 	autonomous = ALProxy("ALAutonomousLife", robot_IP, robot_PORT)
 	autonomous.setState("disabled") # turn ALAutonomousLife off
 
@@ -137,8 +148,6 @@ def main(robot_IP, robot_PORT=9559):
 					elif buf == COMMAND_DISCONNECT:
 						CONNECT = False
 						connection.send("disconnect from robot server.")
-					elif buf == COMMAND_BATTERY:	# 返回机器人电量(单位: %)
-						connection.send(str(battery.getBatteryCharge()) + "%")	
 					elif buf == COMMAND_HEADYAW:
 						# 头部左右转动(Yaw轴)
 						buf2 = connection.recv(1024)	# 读取Yaw值	
@@ -155,6 +164,16 @@ def main(robot_IP, robot_PORT=9559):
 						motion.setStiffnesses("Head", 1.0)
 						motion.setAngles("HeadPitch", angles * almath.TO_RAD, 0.2) # 以10%的速度转换angles角度
 						connection.send("Robot Motion: [ head pitch ]")
+					elif buf == COMMAND_SENSOR:
+						global SENSOR
+						if SENSOR == False:
+							# 开启新线程，定时发送传感器数据
+							SENSOR = True
+							thread.start_new_thread(sensor, (1,)) # 2nd arg must be a tuple
+						else:
+							# 第二次发送COMMAND_SENSOR, 则关闭线程
+							SENSOR = False	# 设置标识位，线程检测后自己退出。
+						connection.send("Robot Motion: [ send sensor value ]")
 					else:
 						connection.send(buf + ": command not found")
 				except socket.timeout:
@@ -164,6 +183,17 @@ def main(robot_IP, robot_PORT=9559):
 		print ""
 		print "Interrupted by user, shutting down"
 		sys.exit(0)
+
+def sensor(interval):
+	''' 每interval秒，发送一次传感器数据
+	'''
+	battery = ALProxy("ALBattery", ROBOT_IP, ROBOT_PORT)
+	while SENSOR == True:
+		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()))
+#		print "BATTERY" + "#" + str(battery.getBatteryCharge())
+		time.sleep(interval)
+	# SENSOR == False
+	thread.exit_thread()	   
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
