@@ -1,5 +1,5 @@
-#-*- coding: utf-8 -*-
 #! /usr/bin/env python
+#-*- coding: utf-8 -*-
 #################################################################
 #   Copyright (C) 2015 Sean Guo. All rights reserved.
 #														  

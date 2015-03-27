@@ -1,3 +1,4 @@
+#!/bin/bash
 #################################################################
 #   Copyright (C) 2014 Sean Guo. All rights reserved.
 #														  
@@ -9,7 +10,6 @@
 #	> Description:
 #################################################################
 
-#!/bin/bash
 
 export PYTHONPATH=${PYTHONPATH}:~/Code/Nao-Robot/python/pynaoqi-python2.7-2.1.0.19-mac64
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:~/Code/Nao-Robot/python/pynaoqi-python2.7-2.1.0.19-mac64
