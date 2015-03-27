@@ -255,18 +255,8 @@ def Operation(connection, command):	# 根据指令执行相应操作
 			# 第二次发送COMMAND_SENSOR, 则关闭线程
 			SENSOR = False  # 设置标识位，线程检测后自己退出。
 	elif command == COMMAND_ARMREST:						# arm rest
-		motion.setAngles('LShoulderPitch', 1, 0.2)
-		motion.setAngles('LShoulderRoll', 0.3, 0.2)
-		motion.setAngles('LElbowYaw', -1.3, 0.2)
-		motion.setAngles('LElbowRoll', -0.5, 0.2)
-		motion.setAngles('LWristYaw', 0, 0.2)
-		motion.setAngles('LHand', 0, 0.2)	
-		motion.setAngles('RShoulderPitch', 1, 0.2)
-		motion.setAngles('RShoulderRoll', -0.3, 0.2)
-		motion.setAngles('RElbowYaw', 1.3, 0.2)
-		motion.setAngles('RElbowRoll', 0.5, 0.2)
-		motion.setAngles('RWristYaw', 0, 0.2)
-		motion.setAngles('RHand', 0, 0.2)
+		LArmMoveInit()
+		RArmMoveInit()
 	elif command == COMMAND_LARMOPEN:						# left hand open
 		motion.post.openHand("LHand")
 	elif command == COMMAND_LARMCLOSE:						# left hand close
@@ -276,29 +266,13 @@ def Operation(connection, command):	# 根据指令执行相应操作
 	elif command == COMMAND_RARMCLOSE:						# Right hand close
 		motion.post.closeHand("RHand")
 	elif command == COMMAND_LARMUP:							# left arm up
-		motion.setAngles('LShoulderPitch', 0.7, 0.2)
-		motion.setAngles('LShoulderRoll', 0.3, 0.2)
-		motion.setAngles('LElbowYaw', -1.5, 0.2)
-		motion.setAngles('LElbowRoll', -0.5, 0.2)
-		motion.setAngles('LWristYaw', -1.7, 0.2)
+		LArmUp()
 	elif command == COMMAND_LARMDOWN:						# left arm down
-		motion.setAngles('LShoulderPitch', 1, 0.2)
-		motion.setAngles('LShoulderRoll', 0.3, 0.2)
-		motion.setAngles('LElbowYaw', -1.3, 0.2)
-		motion.setAngles('LElbowRoll', -0.5, 0.2)
-		motion.setAngles('LWristYaw', 0, 0.2)
+		LArmMoveInit()
 	elif command == COMMAND_RARMUP:							# right arm up
-		motion.setAngles('RShoulderPitch', 0.7, 0.2)
-		motion.setAngles('RShoulderRoll', -0.3, 0.2)
-		motion.setAngles('RElbowYaw', 1.5, 0.2)
-		motion.setAngles('RElbowRoll', 0.5, 0.2)
-		motion.setAngles('RWristYaw', 1.7, 0.2)
+		RArmUp()
 	elif command == COMMAND_RARMDOWN:						# right arm down
-		motion.setAngles('RShoulderPitch', 1, 0.2)
-		motion.setAngles('RShoulderRoll', -0.3, 0.2)
-		motion.setAngles('RElbowYaw', 1.3, 0.2)
-		motion.setAngles('RElbowRoll', 0.5, 0.2)
-		motion.setAngles('RWristYaw', 0, 0.2)
+		RArmMoveInit()
 	else:													# error
 		pass
 #		connection.send(command + ": command not found\r")
@@ -342,6 +316,55 @@ def sensor(interval):
 		time.sleep(interval)
 	# SENSOR == False
 	thread.exit_thread()
+
+def LArmInit():
+	motion.setAngles('LShoulderPitch', 0, 0.2)
+	motion.setAngles('LShoulderRoll', 0, 0.2)
+	motion.setAngles('LElbowYaw', 0, 0.2)
+	motion.setAngles('LElbowRoll', 0, 0.2)
+	motion.setAngles('LWristYaw', 0, 0.2)
+	motion.setAngles('LHand', 0, 0.2)
+def RArmInit():
+	motion.setAngles('RShoulderPitch', 0, 0.2)
+	motion.setAngles('RShoulderRoll', 0, 0.2)
+	motion.setAngles('RElbowYaw', 0, 0.2)
+	motion.setAngles('RElbowRoll', 0, 0.2)
+	motion.setAngles('RWristYaw', 0, 0.2)
+	motion.setAngles('RHand', 0, 0.2)
+def LArmUp():
+	motion.setAngles('LShoulderPitch', 0.7, 0.2)
+	motion.setAngles('LShoulderRoll', 0.3, 0.2)
+	motion.setAngles('LElbowYaw', -1.5, 0.2)
+	motion.setAngles('LElbowRoll', -0.5, 0.2)
+	motion.setAngles('LWristYaw', -1.7, 0.2)
+def RArmUp():
+	motion.setAngles('RShoulderPitch', 0.7, 0.2)
+	motion.setAngles('RShoulderRoll', -0.3, 0.2)
+	motion.setAngles('RElbowYaw', 1.5, 0.2)
+	motion.setAngles('RElbowRoll', 0.5, 0.2)
+	motion.setAngles('RWristYaw', 1.7, 0.2)
+def ArmUp2():
+	# 简易版本
+	motion.rest()
+	motion.wakeUp()
+	motion.setAngles('RShoulderPitch', 0.7, 0.2)
+	motion.setAngles('RWristYaw', 1.5, 0.2)
+	motion.setAngles('LShoulderPitch', 0.7, 0.2)
+	motion.setAngles('LWristYaw', -1.5, 0.2)
+def LArmMoveInit():
+	motion.setAngles('LShoulderPitch', 1, 0.2)
+	motion.setAngles('LShoulderRoll', 0.3, 0.2)
+	motion.setAngles('LElbowYaw', -1.3, 0.2)
+	motion.setAngles('LElbowRoll', -0.5, 0.2)
+	motion.setAngles('LWristYaw', 0, 0.2)
+	motion.setAngles('LHand', 0, 0.2)
+def RArmMoveInit():
+	motion.setAngles('RShoulderPitch', 1, 0.2)
+	motion.setAngles('RShoulderRoll', -0.3, 0.2)
+	motion.setAngles('RElbowYaw', 1.3, 0.2)
+	motion.setAngles('RElbowRoll', 0.5, 0.2)
+	motion.setAngles('RWristYaw', 0, 0.2)
+	motion.setAngles('RHand', 0, 0.2)
 
 if __name__ == "__main__":
 	main()
