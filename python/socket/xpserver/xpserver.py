@@ -52,8 +52,19 @@ COMMAND_TURNRIGHT = 'TURNRIGHT'
 COMMAND_DISCONNECT = 'DISCONNECT'
 COMMAND_SENSOR = 'SENSOR'
 
+# 头部动作
 COMMAND_HEADYAW = 'HEADYAW'     # 头左右
 COMMAND_HEADPITCH = 'HEADPITCH' # 头上下
+# 手臂动作
+COMMAND_ARMREST = 'ARMREST' 
+COMMAND_LARMOPEN = 'LARMOPEN'
+COMMAND_LARMCLOSE = 'LARMCLOSE'
+COMMAND_LARMUP = 'LARMUP'
+COMMAND_LARMDOWN = 'LARMDOWN'
+COMMAND_RARMOPEN = 'RARMOPEN'
+COMMAND_RARMCLOSE = 'RARMCLOSE'
+COMMAND_RARMUP = 'RARMUP'
+COMMAND_RARMDOWN = 'RARMDOWN'
 
 # flag
 CONNECT = False         # 客户端连接Flag    
@@ -65,8 +76,8 @@ ROBOT_IP = '192.168.1.100'
 ROBOT_PORT = 9559
 connection = None
 tts = motion = memory = battery = autonomous = None
-Server = None
-TripleClick = None # TripleClickModule是定义的一个类，而TripleClick是一个类实体。
+
+TripleClick = None 		# TripleClickModule是定义的一个类，而TripleClick是一个类实体。
 
 class TripleClickModule(ALModule):
 	""" A module able to react
@@ -243,6 +254,71 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		else:
 			# 第二次发送COMMAND_SENSOR, 则关闭线程
 			SENSOR = False  # 设置标识位，线程检测后自己退出。
+	elif command == COMMAND_ARMREST:						# arm rest
+		motion.setAngles('LShoulderPitch', 1, 0.2)
+		motion.setAngles('LShoulderRoll', 0.3, 0.2)
+		motion.setAngles('LElbowYaw', -1.3, 0.2)
+		motion.setAngles('LElbowRoll', -0.5, 0.2)
+		motion.setAngles('LWristYaw', 0, 0.2)
+		motion.setAngles('LHand', 0, 0.2)	
+		motion.setAngles('RShoulderPitch', 1, 0.2)
+		motion.setAngles('RShoulderRoll', -0.3, 0.2)
+		motion.setAngles('RElbowYaw', 1.3, 0.2)
+		motion.setAngles('RElbowRoll', 0.5, 0.2)
+		motion.setAngles('RWristYaw', 0, 0.2)
+		motion.setAngles('RHand', 0, 0.2)
+	elif command == COMMAND_LARMOPEN:						# left hand open
+		motion.post.openHand("LHand")
+	elif command == COMMAND_LARMCLOSE:						# left hand close
+		motion.post.closeHand("LHand")
+	elif command == COMMAND_RARMOPEN:						# Right hand open
+		motion.post.openHand("RHand")
+	elif command == COMMAND_RARMCLOSE:						# Right hand close
+		motion.post.closeHand("RHand")
+	elif command == COMMAND_LARMUP:							# left arm up
+		motion.setAngles('LShoulderPitch', 0.7, 0.2)
+		motion.setAngles('LShoulderRoll', 0.3, 0.2)
+		motion.setAngles('LElbowYaw', -1.5, 0.2)
+		motion.setAngles('LElbowRoll', -0.5, 0.2)
+		motion.setAngles('LWristYaw', -1.7, 0.2)
+	elif command == COMMAND_LARMDOWN:						# left arm down
+		motion.setAngles('LShoulderPitch', 1, 0.2)
+		motion.setAngles('LShoulderRoll', 0.3, 0.2)
+		motion.setAngles('LElbowYaw', -1.3, 0.2)
+		motion.setAngles('LElbowRoll', -0.5, 0.2)
+		motion.setAngles('LWristYaw', 0, 0.2)
+	elif command == COMMAND_RARMUP:							# right arm up
+		motion.setAngles('RShoulderPitch', 0.7, 0.2)
+		motion.setAngles('RShoulderRoll', -0.3, 0.2)
+		motion.setAngles('RElbowYaw', 1.5, 0.2)
+		motion.setAngles('RElbowRoll', 0.5, 0.2)
+		motion.setAngles('RWristYaw', 1.7, 0.2)
+	elif command == COMMAND_RARMDOWN:						# right arm down
+		motion.setAngles('RShoulderPitch', 1, 0.2)
+		motion.setAngles('RShoulderRoll', -0.3, 0.2)
+		motion.setAngles('RElbowYaw', 1.3, 0.2)
+		motion.setAngles('RElbowRoll', 0.5, 0.2)
+		motion.setAngles('RWristYaw', 0, 0.2)
+	else:													# error
+		pass
+#		connection.send(command + ": command not found\r")
+
+def mymoveinit():
+	"""判断机器人是否为站立状态，不是站立状态，则更改站立状态，并进行MoveInit.
+	"""
+	if motion.robotIsWakeUp() == False:
+	   motion.post.wakeUp()
+	   motion.post.moveInit()
+	else:
+		pass
+
+def sensor(interval):
+	''' 每interval秒，发送一次传感器数据
+	'''
+	while SENSOR == True:
+		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()) + "\r")
+		connection.send("SONAR1" + "#" + str(memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")) + "\r")
+		connection.send("SONAR2" + "#" + str(memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")) + "\r")
 	else:													# error
 		pass
 #		connection.send(command + ": command not found\r")
