@@ -66,6 +66,9 @@ Nao robot 头部有三块触摸区域，分别对应Head/Touch/Front、Head/Touc
 猜想可能是由于电容式传感器的电容特性引起的。    
 [['Head', False], ['Head/Touch/Front', False]]
 
+#### Event: "FrontTactilTouched"
+虽然TouchChanged事件在松开触摸后需要一段事件才响应，但是例如FrontTactilTouched这样的单独事件，响应速度十分快，基本满足实时要求。（不过太快的触发FrontTactilTouched事件，还是会引起编程上的异常。因为触摸的事件还未执行玩，触摸松开的事件就触发了，由于之前取消了事件订阅，导致异常）
+
 ###手部触摸：
 Nao Robot 手部左右也各有三个电容传感器。
 分别对应：Left, Back, Right;
