@@ -43,9 +43,10 @@ def main(robot_IP, robot_PORT=9559):
 #	FaceLed_Color('green')
 #	FaceLed_Color_Test()
 #	EarLed_Flush()
-	FaceLed_OFF()
-	time.sleep(1)
-	FaceLed_ON()
+
+#	FaceLed_OFF()
+#	time.sleep(1)
+#	FaceLed_ON()
 
 # ----------> Eye led blink <----------
 # Group Name: FaceLeds, RightFaceLeds, LeftFaceLeds; 
