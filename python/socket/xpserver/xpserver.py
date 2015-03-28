@@ -15,10 +15,6 @@
 #						关闭模块事件：同上；
 #################################################################
 
-""" Triple Click Nao ChestButton turn on / off python programe.
-
-"""
-
 import sys
 import time
 
@@ -36,6 +32,7 @@ import time     # 延时函数 time.sleep(1)
 
 LISTEN_PORT = 8001 # 服务器监听端口
 
+# <------------------------------------------------------------->
 # Command 定义
 COMMAND_WAKEUP = 'WAKEUP'
 COMMAND_REST = 'REST'
@@ -65,78 +62,38 @@ COMMAND_RARMOPEN = 'RARMOPEN'
 COMMAND_RARMCLOSE = 'RARMCLOSE'
 COMMAND_RARMUP = 'RARMUP'
 COMMAND_RARMDOWN = 'RARMDOWN'
-
+# <------------------------------------------------------------->
 # flag
-CONNECT = False         # 客户端连接Flag    
-SENSOR  = False         # 传感器监控Flag, 为True则有线程定时发送数据；
-CLICK = False			# 按钮Flag, 按三下CLICK变True, 再按三下变会False;
-
+CONNECT_FLAG = False         # 客户端连接Flag    
+SENSOR_FLAG  = False         # 传感器监控Flag, 为True则有线程定时发送数据；
+# <------------------------------------------------------------->
 # 全局变量，供其他函数使用
 ROBOT_IP = '192.168.1.100'
 ROBOT_PORT = 9559
-connection = None
-tts = motion = memory = battery = autonomous = None
+connection = None				# socket连接
+tts = motion = memory = battery = autonomous = posture = leds = None
 
-TripleClick = None 		# TripleClickModule是定义的一个类，而TripleClick是一个类实体。
+# <------------------------------------------------------------->
+# 设定Head/Touch/Front=1,Head/Touch/Middle=2,Head/Touch/Rear=3
+HEAD_FRONT = 1
+HEAD_MIDDLE = 2
+HEAD_REAR = 3
 
-class TripleClickModule(ALModule):
-	""" A module able to react
-	to Event: "ALChestButton/TripleClickOccurred"
+# 密码序列，只有按照下面序列依次触摸机器人，才会通过验证；
+PASSWORD = [1,3,2,3,1,2]
+PASSWD = []
 
-	"""
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-        # No need for IP and port here because
-        # we have our Python broker connected to NAOqi broker
+VERIFY_FLAG = False			# 密码验证标志，成功验证时改为True
 
-        # Create a proxy to ALTextToSpeech for later use
-		global tts, motion, memory, battery, autonomous
-		tts = ALProxy("ALTextToSpeech")
-		motion = ALProxy("ALMotion")
-#		posture = ALProxy("ALRobotPosture")
-		memory = ALProxy("ALMemory")
-#		leds = ALProxy("ALLeds")
-		battery = ALProxy("ALBattery")
-		autonomous = ALProxy("ALAutonomousLife")
-		
-
-        # Subscribe to the TripleClickOccurred event:
-		memory.subscribeToEvent("ALChestButton/TripleClickOccurred",
-			"TripleClick",
-			"onTripleClickOccurred")
-
-	def onTripleClickOccurred(self, *_args): # 对应事件的callback函数
-		""" This will be called each time TripleClickOccurred.
-
-		"""
-        # Unsubscribe to the event when talking,
-        # to avoid repetitions, 暂时取消订阅，预防冲突;
-		memory.unsubscribeToEvent("ALChestButton/TripleClickOccurred",
-			"TripleClick")
-
-		# 由于双击ChestButton会开启ALAutonomousLife，这里需要再一次关闭
-		# turn ALAutonomousLife off
-		autonomous.setState("disabled") 
-
-		# ------------------> Start <----------------------
-		global CLICK
-		if CLICK == False:	# 启动程序
-			CLICK = True
-			tts.say("Hello, I am nao robot.")
-		else:				# 关闭程序	
-			CLICK = False
-			tts.say("B B E E U U")
-		# ------------------> End <------------------------
-        # Subscribe again to the event
-		memory.subscribeToEvent("ALChestButton/TripleClickOccurred",
-			"TripleClick",
-			"onTripleClickOccurred")
-	
+# Global variable to store the FrontTouch module instance
+FrontTouch = None			# 密码序列：1
+MiddleTouch = None			# 密码序列：2
+RearTouch = None			# 密码序列：3
+LeftFootTouch = None		# 确定密码
+RightFootTouch = None		# 清空密码
+# <------------------------------------------------------------->
 
 def main():
-	""" Main entry point
-
-	"""
 	# ----------> 命令行解析 <----------
 	parser = OptionParser()
 	parser.add_option("--pip",
@@ -165,15 +122,32 @@ def main():
 		pport)       # parent broker port
 
 
-    # Warning: TripleClick must be a global variable
-    # The name given to the constructor must be the name of the
-    # variable
-	global TripleClick
-	TripleClick = TripleClickModule("TripleClick") # 在__init__中，订阅相应事件;
+	# ----------> 创建Robot ALProxy Module<----------
+	global tts, motion, memory, battery, autonomous, posture, leds
+	tts = ALProxy("ALTextToSpeech")
+	motion = ALProxy("ALMotion")
+	posture = ALProxy("ALRobotPosture")
+	memory = ALProxy("ALMemory")
+	leds = ALProxy("ALLeds")
+	battery = ALProxy("ALBattery")
+	autonomous = ALProxy("ALAutonomousLife")
+	autonomous.setState("disabled") 			# turn ALAutonomousLife off
+		
+	# ----------> 触摸登录模块 <----------
+	global FrontTouch, MiddleTouch, RearTouch
+	global LeftFootTouch, RightFootTouch
+	FrontTouch = FrontTouch("FrontTouch")
+	MiddleTouch = MiddleTouch("MiddleTouch")
+	RearTouch = RearTouch("RearTouch")
+	LeftFootTouch = LeftFootTouch("LeftFootTouch")
+	RightFootTouch = RightFootTouch("RightFootTouch")
 
-	while CLICK == False:
+
+	# 未通过验证前，main()睡觉
+	while VERIFY_FLAG == False:
 		time.sleep(1)
 
+	print "Successfully verified, open socket server..."
 	# ----------> 开启socket服务器监听端口 <----------
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.bind((ROBOT_IP, LISTEN_PORT))
@@ -183,19 +157,20 @@ def main():
 	global CONNECT
 	try:
 		while True:		# 死循环	
-			if CLICK == True: 	# 等待客户端连接，单线程监听单一客户端; 
+			if VERIFY_FLAG == True: 		# 等待客户端连接，单线程监听单一客户端; 
 				connection,address = sock.accept()
-				tts.say("socket connecting...")
-				CONNECT = True
-				while (CONNECT == True) and (CLICK == True): # 与客户端进行通信
+				tts.say("OK, socket connected")
+				print "socket connected, waitting for command"
+				CONNECT_FLAG = True
+				while (CONNECT_FLAG == True) and (VERIFY_FLAG == True): # 与客户端进行通信
 					# 服务器接受指令
 					buf = connection.recv(1024)
-					print "get:[", buf, "]"
+					print "command:[", buf, "]"
 					# 根据接受的命令执行不同操作
 					Operation(connection, buf)			
 				connection.close()  # 关闭当前socket连接，进入下一轮循环
 				tts.say("socket connection is closed.")
-				CONNECT = False
+				CONNECT_FLAG = False
 			else:
 				time.sleep(1)
 
@@ -232,7 +207,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		motion.move(0, 0, -0.3)
 	elif command == COMMAND_DISCONNECT:						# disconnect
 		global CONNECT
-		CONNECT = False
+		CONNECT_FLAG = False
 	elif command == COMMAND_HEADYAW:						# head yaw
 		# 头部左右转动(Yaw轴)
 		command2 = connection.recv(1024)    # 读取Yaw值
@@ -247,13 +222,13 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		motion.setAngles("HeadPitch", angles * almath.TO_RAD, 0.2)
 	elif command == COMMAND_SENSOR:							# sensor
 		global SENSOR
-		if SENSOR == False:
+		if SENSOR_FLAG == False:
 			# 开启新线程，定时发送传感器数据
-			SENSOR = True
+			SENSOR_FLAG = True
 			thread.start_new_thread(sensor, (1,)) # 2nd arg must be a tuple
 		else:
 			# 第二次发送COMMAND_SENSOR, 则关闭线程
-			SENSOR = False  # 设置标识位，线程检测后自己退出。
+			SENSOR_FLAG = False  # 设置标识位，线程检测后自己退出。
 	elif command == COMMAND_ARMREST:						# arm rest
 		LArmMoveInit()
 		RArmMoveInit()
@@ -289,7 +264,7 @@ def mymoveinit():
 def sensor(interval):
 	''' 每interval秒，发送一次传感器数据
 	'''
-	while SENSOR == True:
+	while SENSOR_FLAG == True:
 		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()) + "\r")
 		connection.send("SONAR1" + "#" + str(memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")) + "\r")
 		connection.send("SONAR2" + "#" + str(memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")) + "\r")
@@ -309,12 +284,12 @@ def mymoveinit():
 def sensor(interval):
 	''' 每interval秒，发送一次传感器数据
 	'''
-	while SENSOR == True:
+	while SENSOR_FLAG == True:
 		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()) + "\r")
 		connection.send("SONAR1" + "#" + str(memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")) + "\r")
 		connection.send("SONAR2" + "#" + str(memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")) + "\r")
 		time.sleep(interval)
-	# SENSOR == False
+	# SENSOR_FLAG == False
 	thread.exit_thread()
 
 def LArmInit():	# 配置Left Arm 的所有关节为初始位置0.
@@ -365,6 +340,147 @@ def RArmMoveInit(): # 配置Right Arm 为行走初始化的姿态。
 	motion.setAngles('RElbowRoll', 0.5, 0.2)
 	motion.setAngles('RWristYaw', 0, 0.2)
 	motion.setAngles('RHand', 0, 0.2)
+
+class FrontTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+        # Subscribe to FrontTactilTouched event:
+		memory.subscribeToEvent("FrontTactilTouched",
+			"FrontTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		# Unsubscribe to the event when talking,
+		# to avoid repetitions
+
+		# value == 1.0, 即触摸响应；不考虑value == 0, 即离开触摸响应；
+		# VERIFY_FLAG == False, 即未通过验证，此时才需要输入密码。验证后触摸无效；
+		if value == 0 or VERIFY_FLAG == True: # 不符合条件，直接返回；这样可以有效防止事件未订阅异常
+			return
+
+		memory.unsubscribeToEvent("FrontTactilTouched",
+			"FrontTouch")
+
+		#if value == 1.0 and VERIFY_FLAG == False:
+		PASSWD.append(HEAD_FRONT)
+		tts.post.say("1")
+
+			
+        # Subscribe again to the event
+		memory.subscribeToEvent("FrontTactilTouched",
+			"FrontTouch",
+			"onTouched")
+
+
+class MiddleTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("MiddleTactilTouched",
+			"MiddleTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		if value == 0 or VERIFY_FLAG == True:
+			return
+		memory.unsubscribeToEvent("MiddleTactilTouched",
+			"MiddleTouch")
+
+		PASSWD.append(HEAD_MIDDLE)
+		tts.post.say("2")
+			
+		memory.subscribeToEvent("MiddleTactilTouched",
+			"MiddleTouch",
+			"onTouched")
+
+class RearTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("RearTactilTouched",
+			"RearTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		if value == 0 or VERIFY_FLAG == True:
+			return
+		memory.unsubscribeToEvent("RearTactilTouched",
+			"RearTouch")
+
+		PASSWD.append(HEAD_REAR)
+		tts.post.say("3")
+			
+		memory.subscribeToEvent("RearTactilTouched",
+			"RearTouch",
+			"onTouched")
+
+class LeftFootTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("LeftBumperPressed",
+			"LeftFootTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		if value == 0 or VERIFY_FLAG == True:
+			return
+		memory.unsubscribeToEvent("LeftBumperPressed",
+			"LeftFootTouch")
+		
+		global PASSWD
+		tts.post.say("Confirm password.")
+		verify(PASSWD)
+		if VERIFY_FLAG == True: 	# 验证成功
+			tts.post.say("OK! Welcome to Sword Art Online!")
+		else:
+			tts.post.say("No! Wrong password.")
+		PASSWD = []	# 无论验证与否，都清空密码；
+			
+		memory.subscribeToEvent("LeftBumperPressed",
+			"LeftFootTouch",
+			"onTouched")
+
+class RightFootTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("RightBumperPressed",
+			"RightFootTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		'''	按右脚触摸，为清空密码；
+   			在VERIFY_FLAG = False时，为清空密码；
+  	 		而在VERIFY_FLAG = True时，为退出验证登录； 
+			(退出登录功能，用于测试，为了保险，最后应该将此功能转为不易误触发的事件，例如胸前按钮三连击)
+		'''
+		global VERIFY_FLAG
+		if value == 0:
+			return
+		memory.unsubscribeToEvent("RightBumperPressed",
+			"RightFootTouch")
+
+		if VERIFY_FLAG == False:
+			tts.post.say("Empty password.")
+		else:
+			tts.post.say("Logout.")
+			VERIFY_FLAG = False
+		PASSWD = []
+		memory.subscribeToEvent("RightBumperPressed",
+			"RightFootTouch",
+			"onTouched")
+
+def	verify(passwd):
+	'''	将用户输入的passwd与密码库PASSWORD对比
+		验证成功则配置标志位VERIFY_FLAG=True;
+		验证失败则VERIFY_FLAG=False
+	'''
+	global VERIFY_FLAG
+	if len(PASSWORD) != len(passwd):
+		VERIFY_FLAG = False	
+	else:
+		# 先设为True, 一旦有不相同的，立刻改为False
+		VERIFY_FLAG = True
+		for i in range(len(passwd)):
+			if PASSWORD[i] != passwd[i]:	
+				VERIFY_FLAG = False
 
 if __name__ == "__main__":
 	main()
