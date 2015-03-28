@@ -42,13 +42,28 @@ def main(robot_IP, robot_PORT=9559):
 #	FaceLed_RandomColor()
 #	FaceLed_Color('green')
 #	FaceLed_Color_Test()
-	EarLed_Flush()
+#	EarLed_Flush()
+	FaceLed_OFF()
+	time.sleep(1)
+	FaceLed_ON()
 
 # ----------> Eye led blink <----------
 # Group Name: FaceLeds, RightFaceLeds, LeftFaceLeds; 
 # Group Name: FaceLedsBottom (3,4),FaceLedsTop (7,0),FaceLedsExternal (6,5),FaceLedsInternal (1,2) 
 # Group Name: FaceLed0 ~ FaceLed7
 # Short Name:  
+
+def FaceLed_ON():
+	'''
+		打开Face LED
+	'''
+	leds.on("FaceLeds");
+
+def FaceLed_OFF():
+	'''
+		关闭Face LED
+	'''
+	leds.off("FaceLeds");
 
 def FaceLed_Flush(duration=0.05, number=10):
 	"""

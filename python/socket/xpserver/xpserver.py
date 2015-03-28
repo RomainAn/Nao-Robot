@@ -221,7 +221,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		motion.setStiffnesses("Head", 1.0)
 		motion.setAngles("HeadPitch", angles * almath.TO_RAD, 0.2)
 	elif command == COMMAND_SENSOR:							# sensor
-		global SENSOR
+		global SENSOR_FLAG
 		if SENSOR_FLAG == False:
 			# 开启新线程，定时发送传感器数据
 			SENSOR_FLAG = True
