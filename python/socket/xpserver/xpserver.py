@@ -170,7 +170,7 @@ def main():
 	sock.listen(10)
 
 	global connection
-	global CONNECT
+	global CONNECT_FLAG
 	try:
 		while True:		# 死循环	
 			if VERIFY_FLAG == True: 		# 等待客户端连接，单线程监听单一客户端; 
@@ -222,7 +222,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		mymoveinit()
 		motion.move(0, 0, -0.3)
 	elif command == COMMAND_DISCONNECT:						# disconnect
-		global CONNECT
+		global CONNECT_FLAG
 		CONNECT_FLAG = False
 	elif command == COMMAND_HEADYAW:						# head yaw
 		# 头部左右转动(Yaw轴)
