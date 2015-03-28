@@ -11,8 +11,6 @@
 #	> Description:		Nao Robot 远程控制-服务器端
 #						接受客户端发来的指令，执行相应功能。
 #						自动载入该模块，自动载入配置文件：/home/nao/naoqi/preferences/autoload.ini
-# 						启动模块事件：连续三击机器人胸前按钮
-#						关闭模块事件：同上；
 #################################################################
 
 import sys
@@ -62,6 +60,18 @@ COMMAND_RARMOPEN = 'RARMOPEN'
 COMMAND_RARMCLOSE = 'RARMCLOSE'
 COMMAND_RARMUP = 'RARMUP'
 COMMAND_RARMDOWN = 'RARMDOWN'
+# 语音
+COMMAND_SAY = 'SAY'
+# 姿势
+COMMAND_POSTURE_STAND = 'POSTURE_STADN'					# 站立
+COMMAND_POSTURE_MOVEINIT = 'POSTURE_STADNINIT' 			# 行走预备
+COMMAND_POSTURE_STANDZERO = 'POSTURE_STADNZERO'			# 站立零位 
+COMMAND_POSTURE_CROUCH = 'POSTURE_CROUCH'				# 蹲
+COMMAND_POSTURE_SIT = 'POSTURE_SIT'						# 坐下	
+COMMAND_POSTURE_SITRELAX = 'POSTURE_SITRELAX'			# 坐下休息	
+COMMAND_POSTURE_LYINGBELLY = 'POSTURE_LYINGBELLY'		# 趴下
+COMMAND_POSTURE_LYINGBACK = 'POSTURE_LYINGBACK'			# 躺下
+
 # <------------------------------------------------------------->
 # flag
 CONNECT_FLAG = False         # 客户端连接Flag    
@@ -92,6 +102,12 @@ RearTouch = None			# 密码序列：3
 LeftFootTouch = None		# 确定密码
 RightFootTouch = None		# 清空密码
 # <------------------------------------------------------------->
+
+# ----------> Face LED List <----------
+FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
+               "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
+ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
+
 
 def main():
 	# ----------> 命令行解析 <----------
@@ -248,29 +264,29 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		RArmUp()
 	elif command == COMMAND_RARMDOWN:						# right arm down
 		RArmMoveInit()
+	elif command == COMMAND_SAY:							# say
+		messages = connection.recv(1024)
+		tts.post.say(messages)
+	elif command == COMMAND_POSTURE_STAND:					# posture - stand
+		posture.post.goToPosture("Stand", 1.0)
+		# goToPosture()切换姿态是智能的，计算出到达目的姿势所需要的移动路径，进行改变。
+		# 阻塞调用,这里加post实现后台调用。
+	elif command == COMMAND_POSTURE_STANDZERO:				# posture - stand zero
+		posture.post.goToPosture("StandZero", 1.0)
+	elif command == COMMAND_POSTURE_MOVEINIT:				# posture - move init / stand init
+		posture.post.goToPosture("StandInit", 1.0)
+	elif command == COMMAND_POSTURE_CROUCH:					# posture - Crouch
+		posture.post.goToPosture("Crouch", 1.0)
+	elif command == COMMAND_POSTURE_SIT:					# posture - sit
+		posture.post.goToPosture("Sit", 1.0)
+	elif command == COMMAND_POSTURE_SITRELAX:				# posture - sit relax
+		posture.post.goToPosture("SitRelax", 1.0)
+	elif command == COMMAND_POSTURE_LYINGBELLY:				# posture - lying belly
+		posture.post.goToPosture("LyingBelly", 1.0)
+	elif command == COMMAND_POSTURE_LYINGBACK:				# posture - lying back
+		posture.post.goToPosture("LyingBack", 1.0)
 	else:													# error
 		pass
-#		connection.send(command + ": command not found\r")
-
-def mymoveinit():
-	"""判断机器人是否为站立状态，不是站立状态，则更改站立状态，并进行MoveInit.
-	"""
-	if motion.robotIsWakeUp() == False:
-	   motion.post.wakeUp()
-	   motion.post.moveInit()
-	else:
-		pass
-
-def sensor(interval):
-	''' 每interval秒，发送一次传感器数据
-	'''
-	while SENSOR_FLAG == True:
-		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()) + "\r")
-		connection.send("SONAR1" + "#" + str(memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")) + "\r")
-		connection.send("SONAR2" + "#" + str(memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")) + "\r")
-	else:													# error
-		pass
-#		connection.send(command + ": command not found\r")
 
 def mymoveinit():
 	"""判断机器人是否为站立状态，不是站立状态，则更改站立状态，并进行MoveInit.
@@ -426,12 +442,15 @@ class LeftFootTouch(ALModule):
 			"LeftFootTouch")
 		
 		global PASSWD
-		tts.post.say("Confirm password.")
+		tts.post.say("Confirm")
 		verify(PASSWD)
-		if VERIFY_FLAG == True: 	# 验证成功
+		if VERIFY_FLAG == True: 	# 验证成功	
 			tts.post.say("OK! Welcome to Sword Art Online!")
+			thread.start_new_thread(FaceLed_Color, ('green',))
 		else:
 			tts.post.say("No! Wrong password.")
+			# 开新线程，变化Face LED
+			thread.start_new_thread(FaceLed_Color, ('red',)) # 2nd arg must be a tuple
 		PASSWD = []	# 无论验证与否，都清空密码；
 			
 		memory.subscribeToEvent("LeftBumperPressed",
@@ -448,8 +467,6 @@ class RightFootTouch(ALModule):
 	def onTouched(self, strVarName, value):
 		'''	按右脚触摸，为清空密码；
    			在VERIFY_FLAG = False时，为清空密码；
-  	 		而在VERIFY_FLAG = True时，为退出验证登录； 
-			(退出登录功能，用于测试，为了保险，最后应该将此功能转为不易误触发的事件，例如胸前按钮三连击)
 		'''
 		global VERIFY_FLAG
 		if value == 0:
@@ -459,10 +476,7 @@ class RightFootTouch(ALModule):
 
 		if VERIFY_FLAG == False:
 			tts.post.say("Empty password.")
-		else:
-			tts.post.say("Logout.")
-			VERIFY_FLAG = False
-		PASSWD = []
+			PASSWD = []
 		memory.subscribeToEvent("RightBumperPressed",
 			"RightFootTouch",
 			"onTouched")
@@ -481,6 +495,23 @@ def	verify(passwd):
 		for i in range(len(passwd)):
 			if PASSWORD[i] != passwd[i]:	
 				VERIFY_FLAG = False
+
+def FaceLed_Color(color='white',duration=0.1):
+	"""
+		change the color of the eyes to [color].
+        color, 颜色；
+		duration, 速度;
+	"""
+	time.sleep(1)
+	# 变色
+	for led in FaceLedList:
+		leds.post.fadeRGB(led, color, duration)
+	# 延时
+	time.sleep(3)
+	# 变回白色
+	for led in FaceLedList:
+		leds.post.fadeRGB(led, 'white', duration)
+	thread.exit_thread() # 退出线程
 
 if __name__ == "__main__":
 	main()
