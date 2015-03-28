@@ -55,12 +55,18 @@ class FrontTouch(ALModule):
 	def onTouched(self, strVarName, value):
 		# Unsubscribe to the event when talking,
 		# to avoid repetitions
+
+		# value == 1.0, 即触摸响应；不考虑value == 0, 即离开触摸响应；
+		# VERIFY_FLAG == False, 即未通过验证，此时才需要输入密码。验证后触摸无效；
+		if value == 0 or VERIFY_FLAG == True: # 不符合条件，直接返回；这样可以有效防止事件未订阅异常
+			return
+
 		memory.unsubscribeToEvent("FrontTactilTouched",
 			"FrontTouch")
 
-		if value == 1.0:
-			PASSWD.append(HEAD_FRONT)
-			tts.post.say("1")
+		#if value == 1.0 and VERIFY_FLAG == False:
+		PASSWD.append(HEAD_FRONT)
+		tts.post.say("1")
 
 			
         # Subscribe again to the event
@@ -77,12 +83,13 @@ class MiddleTouch(ALModule):
 			"onTouched")
 
 	def onTouched(self, strVarName, value):
+		if value == 0 or VERIFY_FLAG == True:
+			return
 		memory.unsubscribeToEvent("MiddleTactilTouched",
 			"MiddleTouch")
 
-		if value == 1.0:
-			PASSWD.append(HEAD_MIDDLE)
-			tts.post.say("2")
+		PASSWD.append(HEAD_MIDDLE)
+		tts.post.say("2")
 			
 		memory.subscribeToEvent("MiddleTactilTouched",
 			"MiddleTouch",
@@ -96,12 +103,13 @@ class RearTouch(ALModule):
 			"onTouched")
 
 	def onTouched(self, strVarName, value):
+		if value == 0 or VERIFY_FLAG == True:
+			return
 		memory.unsubscribeToEvent("RearTactilTouched",
 			"RearTouch")
 
-		if value == 1.0:
-			PASSWD.append(HEAD_REAR)
-			tts.post.say("3")
+		PASSWD.append(HEAD_REAR)
+		tts.post.say("3")
 			
 		memory.subscribeToEvent("RearTactilTouched",
 			"RearTouch",
@@ -115,18 +123,19 @@ class LeftFootTouch(ALModule):
 			"onTouched")
 
 	def onTouched(self, strVarName, value):
+		if value == 0 or VERIFY_FLAG == True:
+			return
 		memory.unsubscribeToEvent("LeftBumperPressed",
 			"LeftFootTouch")
-
-		if value == 1.0:
-			global PASSWD
-			tts.post.say("Confirm password.")
-			verify(PASSWD)
-			if VERIFY_FLAG == True: 	# 验证成功
-				tts.post.say("Succeed!Welcome to Sword Art Online!")
-			else:
-				tts.post.say("incorrect password")
-			PASSWD = []			# 无论验证与否，都清空密码；
+		
+		global PASSWD
+		tts.post.say("Confirm password.")
+		verify(PASSWD)
+		if VERIFY_FLAG == True: 	# 验证成功
+			tts.post.say("OK! Welcome to Sword Art Online!")
+		else:
+			tts.post.say("No! Wrong password.")
+		PASSWD = []	# 无论验证与否，都清空密码；
 			
 		memory.subscribeToEvent("LeftBumperPressed",
 			"LeftFootTouch",
@@ -140,13 +149,23 @@ class RightFootTouch(ALModule):
 			"onTouched")
 
 	def onTouched(self, strVarName, value):
+		'''	按右脚触摸，为清空密码；
+   			在VERIFY_FLAG = False时，为清空密码；
+  	 		而在VERIFY_FLAG = True时，为退出验证登录； 
+			(退出登录功能，用于测试，为了保险，最后应该将此功能转为不易误触发的事件，例如胸前按钮三连击)
+		'''
+		if value == 0:
+			return
 		memory.unsubscribeToEvent("RightBumperPressed",
 			"RightFootTouch")
 
-		if value == 1.0:
-			PASSWD = []
+		if VERIFY_FLAG == False:
 			tts.post.say("Empty password.")
-			
+		else:
+			tts.post.say("Logout.")
+			global VERIFY_FLAG
+			VERIFY_FLAG = False
+		PASSWD = []
 		memory.subscribeToEvent("RightBumperPressed",
 			"RightFootTouch",
 			"onTouched")
