@@ -101,6 +101,7 @@ MiddleTouch = None			# 密码序列：2
 RearTouch = None			# 密码序列：3
 LeftFootTouch = None		# 确定密码
 RightFootTouch = None		# 清空密码
+TripleClick = None			# 退出登录，设置为胸前按钮三连击，是为了防止误操作;
 # <------------------------------------------------------------->
 
 # ----------> Face LED List <----------
@@ -151,12 +152,13 @@ def main():
 		
 	# ----------> 触摸登录模块 <----------
 	global FrontTouch, MiddleTouch, RearTouch
-	global LeftFootTouch, RightFootTouch
+	global LeftFootTouch, RightFootTouch, TripleClick
 	FrontTouch = FrontTouch("FrontTouch")
 	MiddleTouch = MiddleTouch("MiddleTouch")
 	RearTouch = RearTouch("RearTouch")
 	LeftFootTouch = LeftFootTouch("LeftFootTouch")
 	RightFootTouch = RightFootTouch("RightFootTouch")
+	TripleClick = TripleClick("TripleClick")
 
 
 	# 未通过验证前，main()睡觉
@@ -479,6 +481,38 @@ class RightFootTouch(ALModule):
 			PASSWD = []
 		memory.subscribeToEvent("RightBumperPressed",
 			"RightFootTouch",
+			"onTouched")
+
+class TripleClick(ALModule):
+	''' 胸前按钮三连接 - 退出登录。
+		注意：由于机器人自带的绑定事件，双击按钮会触发机器人的autonomous life，这里需要再关闭。
+		autonomous life会对编程控制产生干扰。
+	'''
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("ALChestButton/TripleClickOccurred",
+			"TripleClick",
+			"onClicked")
+
+	def onClicked(self, eventName):
+		'''
+			在通过验证后(VERIFY_FLAG=True)，通过胸前三连击退出登录。
+		'''
+		autonomous.setState("disabled")
+		global VERIFY_FLAG
+		if VERIFY_FLAG == False:
+			return
+		memory.unsubscribeToEvent("MiddleTactilTouched",
+			"MiddleTouch")
+
+		global PASSWD
+		PASSWD = []
+		VERIFY_FLAG = False
+		tts.say("Logout!")
+		thread.start_new_thread(FaceLed_Color, ('yellow',))
+			
+		memory.subscribeToEvent("MiddleTactilTouched",
+			"MiddleTouch",
 			"onTouched")
 
 def	verify(passwd):
