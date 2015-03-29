@@ -16,7 +16,7 @@
 #tags
 
 #过滤Nao robot ptyhon sdk，避免上传大文件
-/python/pynaoqi-python2.7-2.1.0.19-mac64/
+/python/pynaoqi-python2.7-*/
 
 # 过滤脚本配置文件
 /python/set_python_path.sh
