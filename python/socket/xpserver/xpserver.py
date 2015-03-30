@@ -71,6 +71,8 @@ COMMAND_POSTURE_SIT = 'POSTURE_SIT'						# 坐下
 COMMAND_POSTURE_SITRELAX = 'POSTURE_SITRELAX'			# 坐下休息	
 COMMAND_POSTURE_LYINGBELLY = 'POSTURE_LYINGBELLY'		# 趴下
 COMMAND_POSTURE_LYINGBACK = 'POSTURE_LYINGBACK'			# 躺下
+# 避障
+COMMAND_OBSTACLE = 'OBSTACLE'							# 超声波避障
 
 # <------------------------------------------------------------->
 # flag
@@ -109,6 +111,19 @@ TripleClick = None			# 退出登录，设置为胸前按钮三连击，是为了
 FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
                "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
 ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
+
+
+# <------------------------------------------------------------->
+# 障碍物标志
+OBSTACLE_L = False 	# True则左侧有障碍
+OBSTACLE_R = False  # True则右侧有障碍
+OBSTACLE_ON = False	# 避障标志位，为False时退出避障循环
+
+OBSTACLE_DISTANCE = 0.5	# 设置检测的安全距离
+OBSTACLE_DELAY = 0.3	# 设置延时事件, 单位：秒
+MOVE_SPEED = 0.4		# 移动速度, 单位: m/s
+TURN_ANGLE = 20			# 旋转角度，单位: 度
+# <------------------------------------------------------------->
 
 
 def main():
@@ -290,6 +305,13 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		posture.post.goToPosture("LyingBelly", 1.0)
 	elif command == COMMAND_POSTURE_LYINGBACK:				# posture - lying back
 		posture.post.goToPosture("LyingBack", 1.0)
+	elif command == COMMAND_OBSTACLE:						# avoid obstacle
+		global OBSTACLE_ON
+		if OBSTACLE_ON == False:
+			OBSTACLE_ON = True
+			thread.start_new_thread(obstacle, ())
+		else:
+			OBSTACLE_ON = False
 	else:													# error
 		pass
 
@@ -297,8 +319,8 @@ def mymoveinit():
 	"""判断机器人是否为站立状态，不是站立状态，则更改站立状态，并进行MoveInit.
 	"""
 	if motion.robotIsWakeUp() == False:
-	   motion.post.wakeUp()
-	   motion.post.moveInit()
+		motion.post.wakeUp()
+		motion.post.moveInit()
 	else:
 		pass
 
@@ -551,6 +573,68 @@ def FaceLed_Color(color='white',duration=0.1):
 	for led in FaceLedList:
 		leds.post.fadeRGB(led, 'white', duration)
 	thread.exit_thread() # 退出线程
+
+# --------------------------------------------------------------------- 超声波避障
+def obstacle():
+	''' 
+		固定间隔循环检测是否存在障碍，根据障碍物标志决定机器人的行走方向
+	'''
+	global OBSTACLE_L, OBSTACLE_R, OBSTACLE_ON
+
+	motion.wakeUp()
+	motion.moveInit()
+	sonar.subscribe("my_obstacle")
+	while OBSTACLE_ON == True:			# 避障标识为True，则持续循环检测
+		# 1. 检测障碍物
+		check()
+		# 2. 根据障碍物标志决定行走方向
+		operation(OBSTACLE_L, OBSTACLE_R)	
+		# 3. 延时
+		time.sleep(OBSTACLE_DELAY)
+	sonar.unsubscribe("my_obstacle")
+	motion.stopMove()
+	motion.rest()
+	thread.exit_thread()
+	
+def check():
+	'''
+		检测超声波数值，设置标志位
+	'''
+	left = memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")
+	right = memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")
+
+	global OBSTACLE_L, OBSTACLE_R
+	if left > OBSTACLE_DISTANCE: 		# 超过安全距离，无障碍
+		OBSTACLE_L = False
+	else:								# 小于安全距离，有障碍
+		OBSTACLE_L = True
+	if right > OBSTACLE_DISTANCE: 		# 超过安全距离，无障碍
+		OBSTACLE_R = False
+	else:								# 小于安全距离，有障碍
+		OBSTACLE_R = True
+
+# 	FLAG_L		FLAG_R				operation
+# 	False		False				无障碍物，直走
+#	False		True				右侧障碍，左转
+#	True		False				左侧障碍，右转
+#	True		True				左右障碍，左转
+def operation(flag_L, flag_R):
+	if flag_L == False:
+		if flag_R == False:
+			motion_go()			
+		else:
+			motion_turn_left()
+	else:
+		if flag_R == False:
+			motion_turn_right()
+		else:
+			motion_turn_left()
+def motion_go():
+	motion.move(MOVE_SPEED, 0, 0)
+def motion_turn_left():
+	motion.post.moveTo(0, 0, TURN_ANGLE * almath.TO_RAD)
+def motion_turn_right():
+	motion.post.moveTo(0, 0, -1.0 * TURN_ANGLE * almath.TO_RAD)
 
 if __name__ == "__main__":
 	main()
