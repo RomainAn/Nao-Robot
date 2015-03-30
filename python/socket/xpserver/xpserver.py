@@ -82,6 +82,7 @@ ROBOT_IP = '192.168.1.100'
 ROBOT_PORT = 9559
 connection = None				# socket连接
 tts = motion = memory = battery = autonomous = posture = leds = None
+sonar = None
 
 # <------------------------------------------------------------->
 # 设定Head/Touch/Front=1,Head/Touch/Middle=2,Head/Touch/Rear=3
@@ -141,12 +142,14 @@ def main():
 
 	# ----------> 创建Robot ALProxy Module<----------
 	global tts, motion, memory, battery, autonomous, posture, leds
+	global sonar
 	tts = ALProxy("ALTextToSpeech")
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
 	memory = ALProxy("ALMemory")
 	leds = ALProxy("ALLeds")
 	battery = ALProxy("ALBattery")
+	sonar = ALProxy("ALSonar")
 	autonomous = ALProxy("ALAutonomousLife")
 	autonomous.setState("disabled") 			# turn ALAutonomousLife off
 		
@@ -243,7 +246,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		if SENSOR_FLAG == False:
 			# 开启新线程，定时发送传感器数据
 			SENSOR_FLAG = True
-			thread.start_new_thread(sensor, (1,)) # 2nd arg must be a tuple
+			thread.start_new_thread(sensor, (0.5,)) # 2nd arg must be a tuple
 		else:
 			# 第二次发送COMMAND_SENSOR, 则关闭线程
 			SENSOR_FLAG = False  # 设置标识位，线程检测后自己退出。
@@ -302,12 +305,14 @@ def mymoveinit():
 def sensor(interval):
 	''' 每interval秒，发送一次传感器数据
 	'''
+	sonar.subscribe("xpserver")
 	while SENSOR_FLAG == True:
 		connection.send("BATTERY" + "#" + str(battery.getBatteryCharge()) + "\r")
 		connection.send("SONAR1" + "#" + str(memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")) + "\r")
 		connection.send("SONAR2" + "#" + str(memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")) + "\r")
 		time.sleep(interval)
 	# SENSOR_FLAG == False
+	sonar.unsubscribe("xpserver")
 	thread.exit_thread()
 
 def LArmInit():	# 配置Left Arm 的所有关节为初始位置0.
@@ -508,7 +513,7 @@ class TripleClick(ALModule):
 		global PASSWD
 		PASSWD = []
 		VERIFY_FLAG = False
-		tts.say("Logout!")
+		tts.post.say("Logout!")
 		thread.start_new_thread(FaceLed_Color, ('yellow',))
 			
 		memory.subscribeToEvent("MiddleTactilTouched",

@@ -25,5 +25,5 @@ tts.setLanguage("English")
 tts.say("Hello, world! I am Nao robot!")
 
 # 切换语言包需要较长时间，故尽量不要在程序运行时切换；
-tts.setLanguage("Chinese")
-tts.say("你好，我是闹机器人。我可以说流利的绕口令：黑化肥挥发发灰会花飞")
+#tts.setLanguage("Chinese")
+#tts.say("你好，我是闹机器人。我可以说流利的绕口令：黑化肥挥发发灰会花飞")
