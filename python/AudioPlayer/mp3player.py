@@ -14,6 +14,8 @@
 #						头部near:		上一首
 #						右脚:			volume -
 #						左脚:			volume +
+#						左手left(外侧):	快进
+#						右手right(外侧):快退
 #################################################################
 """
 	Nao Robot Mp3 player, 用于机器人音频编程练习；
@@ -27,7 +29,7 @@ from naoqi import ALModule
 
 # 歌曲序列
 MusicPath = '/home/nao/music/'
-MusicList = ['Maplestory.mp3', 'forest.mp3', 'frozenland.mp3', 'skycity.mp3']
+MusicList = ['tiantiande.mp3', 'bubble.mp3', 'qilixiang.mp3', 'Maplestory.mp3', 'forest.mp3', 'frozenland.mp3', 'skycity.mp3']
 MusicPoint = 0		# 指向当前播放音乐的索引, 范围 range(len(MusicList))
 PlayFlag = False 	# 播放标志位, 播放音乐时标识为True
 PlayFileID = None	# 正在播放文件的fileID
@@ -39,6 +41,8 @@ MiddleTouch = None			# 开始/暂停
 RearTouch = None			# 上一首
 LeftFootTouch = None		# Volume +
 RightFootTouch = None		# Volume -
+LeftHandLeftTouch = None	# 快进
+RightHandRightTouch = None	# 快退
 
 tts = None
 memory = None
@@ -182,6 +186,46 @@ class RightFootTouch(ALModule):
 			"RightFootTouch",
 			"onTouched")
 
+class LeftHandLeftTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("HandLeftLeftTouched",
+			"LeftHandLeftTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		if value == 0:
+			return
+		memory.unsubscribeToEvent("HandLeftLeftTouched",
+			"LeftHandLeftTouch")
+		position = aup.getCurrentPosition(PlayFileID)	
+		if position + 10 < aup.getFileLength(PlayFileID):
+			aup.goTo(PlayFileID, position + 10)
+			print "Position >>:", aup.getCurrentPosition(PlayFileID)
+		memory.subscribeToEvent("HandLeftLeftTouched",
+			"LeftHandLeftTouch",
+			"onTouched")
+
+class RightHandRightTouch(ALModule):
+	def __init__(self, name):
+		ALModule.__init__(self, name)
+		memory.subscribeToEvent("HandRightRightTouched",
+			"RightHandRightTouch",
+			"onTouched")
+
+	def onTouched(self, strVarName, value):
+		if value == 0:
+			return
+		memory.unsubscribeToEvent("HandRightRightTouched",
+			"RightHandRightTouch")
+		position = aup.getCurrentPosition(PlayFileID)	
+		if position - 10 >= 0:
+			aup.goTo(PlayFileID, position - 10)
+			print "Position <<:", aup.getCurrentPosition(PlayFileID)
+		memory.subscribeToEvent("HandRightRightTouched",
+			"RightHandRightTouch",
+			"onTouched")
+
 def main(ip, port):
 	# We need this broker to be able to construct
 	# NAOqi modules and subscribe to other modules
@@ -207,11 +251,14 @@ def main(ip, port):
 
 	global FrontTouch, MiddleTouch, RearTouch
 	global LeftFootTouch, RightFootTouch
+	global LeftHandLeftTouch, RightHandRightTouch
 	FrontTouch = FrontTouch("FrontTouch")
 	MiddleTouch = MiddleTouch("MiddleTouch")
 	RearTouch = RearTouch("RearTouch")
 	LeftFootTouch = LeftFootTouch("LeftFootTouch")
 	RightFootTouch = RightFootTouch("RightFootTouch")
+	LeftHandLeftTouch = LeftHandLeftTouch("LeftHandLeftTouch")
+	RightHandRightTouch = RightHandRightTouch("RightHandRightTouch")
 
 	try:
 		while True:
