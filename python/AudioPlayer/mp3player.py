@@ -19,6 +19,7 @@
 #################################################################
 """
 	Nao Robot Mp3 player, 用于机器人音频编程练习；
+	指定音乐文件夹后，程序会自动扫描内部所有的mp3文件；
 """
 import argparse
 import sys
@@ -26,10 +27,11 @@ import time
 from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
+import os
 
-# 歌曲序列
+# 歌曲文件夹
 MusicPath = '/home/nao/music/'
-MusicList = ['tiantiande.mp3', 'bubble.mp3', 'qilixiang.mp3', 'Maplestory.mp3', 'forest.mp3', 'frozenland.mp3', 'skycity.mp3']
+MusicList = []		# 歌曲列表；程序启动后会扫描一遍音乐文件夹；为绝对路径地址 
 MusicPoint = 0		# 指向当前播放音乐的索引, 范围 range(len(MusicList))
 PlayFlag = False 	# 播放标志位, 播放音乐时标识为True
 PlayFileID = None	# 正在播放文件的fileID
@@ -68,7 +70,7 @@ class FrontTouch(ALModule):
 
 		global MusicPoint, PlayFileID
 		MusicPoint = (MusicPoint + 1) % len(MusicList)
-		filename = MusicPath + MusicList[MusicPoint]
+		filename = MusicList[MusicPoint]
 		print "next song:", MusicList[MusicPoint]
 		if PlayFlag == True:		# 播放音乐时切歌
 			# 停止播放
@@ -127,7 +129,7 @@ class RearTouch(ALModule):
 
 		global MusicPoint, PlayFileID
 		MusicPoint = (MusicPoint + len(MusicList) - 1) % len(MusicList)
-		filename = MusicPath + MusicList[MusicPoint]
+		filename = MusicList[MusicPoint]
 		print "Previous Song:", MusicList[MusicPoint]
 		if PlayFlag == True:		# 播放音乐时切歌
 			# 停止播放
@@ -243,10 +245,10 @@ def main(ip, port):
 	leds = ALProxy("ALLeds", ip, port)
 	aup = ALProxy("ALAudioPlayer", ip, port)
 
-
 	# 启动后需要提前加载第一个音乐文件
 	global PlayFileID
-	filename = MusicPath + MusicList[MusicPoint]
+	scan_mp3()			# 先扫描文件夹
+	filename = MusicList[MusicPoint]
 	PlayFileID = aup.loadFile(filename)
 
 	global FrontTouch, MiddleTouch, RearTouch
@@ -270,6 +272,20 @@ def main(ip, port):
 		print "Stop All Music"
 		myBroker.shutdown()
 		sys.exit(0)
+
+def scan_mp3():
+	'''
+		从指定的文件夹中扫描出MP3格式的文件
+	'''
+	global MusicList
+	for root, dirs, files in os.walk(MusicPath):
+    	# root   #当前遍历到的目录的根
+    	# dirs   #当前遍历到的目录的根下的所有目录
+    	# files  #当前遍历到的目录的根下的所有文件
+		for filename in files:
+			if filename.find('.mp3') != -1:	 		# 找不到后缀才返回-1
+				filepath = os.path.join(root, filename)
+				MusicList.append(filepath)			# 将找到的mp3文件的地址加入MusicList	
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
