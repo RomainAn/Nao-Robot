@@ -20,6 +20,7 @@
 """
 	Nao Robot Mp3 player, 用于机器人音频编程练习；
 	指定音乐文件夹后，程序会自动扫描内部所有的mp3文件；
+	注：由于机器人没有提供检测歌曲结束的API，这里开一线程，监听播放position, 到结束后触发next song;
 """
 import argparse
 import sys
@@ -28,6 +29,7 @@ from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
 import os
+import thread
 
 # 歌曲文件夹
 MusicPath = '/home/nao/music/'
@@ -76,7 +78,7 @@ class FrontTouch(ALModule):
 			# 停止播放
 			aup.pause(PlayFileID)
 			# 切歌播放
-			PlayFileID = aup.post.playFile(filename, MyVolume, 0)
+			PlayFileID = aup.post.playFileInLoop(filename, MyVolume, 0)
 		else:						# 暂停音乐时切歌
 			# 载入下一首歌曲
 			PlayFileID = aup.loadFile(filename)
@@ -103,7 +105,7 @@ class MiddleTouch(ALModule):
 		global PlayFlag, PlayFileID
 		if PlayFlag == False:			# 没有播放音乐，则开始播放音乐
 			PlayFlag = True
-			aup.post.play(PlayFileID, MyVolume, 0)
+			aup.post.playInLoop(PlayFileID, MyVolume, 0)
 			print "Play"
 		else:							# 正在播放音乐，则暂停播放
 			PlayFlag = False
@@ -135,7 +137,7 @@ class RearTouch(ALModule):
 			# 停止播放
 			aup.pause(PlayFileID)
 			# 切歌播放
-			PlayFileID = aup.post.playFile(filename, MyVolume, 0)
+			PlayFileID = aup.post.playFileInLoop(filename, MyVolume, 0)
 		else:						# 暂停音乐时切歌
 			# 载入下一首歌曲
 			PlayFileID = aup.loadFile(filename)
@@ -262,6 +264,9 @@ def main(ip, port):
 	LeftHandLeftTouch = LeftHandLeftTouch("LeftHandLeftTouch")
 	RightHandRightTouch = RightHandRightTouch("RightHandRightTouch")
 
+	# 创建一个线程，监听播放进度, 实现播放歌曲结束后自动切换下一首歌曲;
+	thread.start_new_thread(timer, ())
+
 	try:
 		while True:
 			time.sleep(1)
@@ -286,6 +291,17 @@ def scan_mp3():
 			if filename.find('.mp3') != -1:	 		# 找不到后缀才返回-1
 				filepath = os.path.join(root, filename)
 				MusicList.append(filepath)			# 将找到的mp3文件的地址加入MusicList	
+
+def timer():
+	'''
+		检查当前音乐的播放进度，结束后切换下一首歌曲;
+	'''
+	while True:
+		postion = aup.getCurrentPosition(PlayFileID)	
+		length = aup.getFileLength(PlayFileID)
+		if PlayFlag == True and postion == length - 2: # 正在播放，且进度即将结束
+			memory.raiseEvent('FrontTactilTouched', 1.0) # 触发下一首对应的事件
+		time.sleep(1)
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
