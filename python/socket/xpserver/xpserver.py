@@ -19,6 +19,7 @@ from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
 from optparse import OptionParser
+from unicode_tools import *
 
 import socket
 import sys      # sys.exit() 退出main函数
@@ -104,7 +105,7 @@ HEAD_REAR = 3
 PASSWORD = [1,3,2,3,1,2]
 PASSWD = []
 
-VERIFY_FLAG = False			# 密码验证标志，成功验证时改为True
+VERIFY_FLAG = True			# 密码验证标志，成功验证时改为True
 
 # Global variable to store the FrontTouch module instance
 FrontTouch = None			# 密码序列：1
@@ -317,8 +318,12 @@ def Operation(connection, command):	# 根据指令执行相应操作
 	elif command == COMMAND_RARMDOWN:						# right arm down
 		RArmMoveInit()
 	elif command == COMMAND_SAY:							# say
+		'''
+			发送汉字则说汉语，发送英语则说英语。
+			注：机器人切换英语语言包需要0.8s，切换汉语需2s;
+		'''
 		messages = connection.recv(1024)
-		tts.post.say(messages)
+		thread.start_new_thread(mysay, (messages,))
 	elif command == COMMAND_POSTURE_STAND:					# posture - stand
 		posture.post.goToPosture("Stand", 1.0)
 		# goToPosture()切换姿态是智能的，计算出到达目的姿势所需要的移动路径，进行改变。
@@ -802,6 +807,27 @@ def download_mp3(filename, url):
 	except Exception,e:
 		print 'Exception:',e
 		print "download_mp3()"
+
+def mysay(messages):
+	'''
+		控制机器人说messages
+		默认messages是str类型
+	'''
+	# 1. 判断语言
+	umesg = messages.decode('utf-8')	# 得到unicode格式的消息，判断语言
+	# 从unicode中的第一个元素判断语言, 2. 切换语言
+	if is_chinese(umesg[0]) == True:
+		if tts.getLanguage() != u'Chinese':
+			tts.setLanguage("Chinese")				# 耗时2s	
+	else:
+		if tts.getLanguage() != u'English':
+			tts.setLanguage("English")				# 耗时0.8s
+	# 3. 说话
+	tts.say(messages)
+	# 4. 切换会英语语言包，默认英语
+	tts.setLanguage("English")
+	# 5. 退出线程
+	thread.exit_thread()
 
 if __name__ == "__main__":
 	main()
