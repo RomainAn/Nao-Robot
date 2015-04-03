@@ -68,6 +68,12 @@ COMMAND_POSTURE_SIT = 'POSTURE_SIT'						# 坐下
 COMMAND_POSTURE_SITRELAX = 'POSTURE_SITRELAX'			# 坐下休息	
 COMMAND_POSTURE_LYINGBELLY = 'POSTURE_LYINGBELLY'		# 趴下
 COMMAND_POSTURE_LYINGBACK = 'POSTURE_LYINGBACK'			# 躺下
+# 自定义姿势
+COMMAND_POSTURE_RECORD = 'POSTURE_RECORD'				# 记录自定义姿势
+COMMAND_POSTURE_RECORD_STOP = 'POSTURE_RECORD_STOP'		# 中断记录
+COMMAND_POSTURE_CUSTOMER = 'POSTURE_CUSTOMER'			# 调用自定义姿势
+COMMAND_POSTURE_DELETE = 'POSTURE_DELETE'				# 删除自定义姿势
+
 # 避障
 COMMAND_OBSTACLE = 'OBSTACLE'							# 超声波避障
 # 音乐播放器
@@ -86,15 +92,21 @@ COMMAND_MUSIC_URL	=	'MUSIC_URL'						# 下载音乐并播放
 # flag
 CONNECT_FLAG = False         # 客户端连接Flag    
 SENSOR_FLAG  = False         # 传感器监控Flag, 为True则有线程定时发送数据；
+POSTURE_RECORD_FLAG = False		 # 自定义姿势录制Flag
 # <------------------------------------------------------------->
 # 全局变量，供其他函数使用
-ROBOT_IP = '192.168.1.100'
+ROBOT_IP = '192.168.2.100'
 ROBOT_PORT = 9559
 connection = None				# socket连接
 tts = motion = memory = battery = autonomous = posture = leds = None
 sonar = None
 aup = None
+video = None
 
+# 自定义姿势列表, key为自定义名称, value为全身姿势值; 
+posture_list = {}
+# 全身姿势, key为各个关节名, value为关节值;
+posture_value = {}
 # <------------------------------------------------------------->
 # 设定Head/Touch/Front=1,Head/Touch/Middle=2,Head/Touch/Rear=3
 HEAD_FRONT = 1
@@ -150,8 +162,30 @@ MyVolume = 0.50     # 音量, [0.0 ~ 1.0]
 #RightFootTouch = None       # Volume -
 
 # <------------------------------------------------------------->
+# 视频系统
+
+# First you have to choose a name for your Vision Module
+VIDEO_NAME = "xpserver_VM";
+
+# Then specify the resolution among :
+#   kQQVGA (160x120), kQVGA (320x240), kVGA (640x480) or k4VGA (1280x960, only with the HD camera).
+# (Definitions are available in alvisiondefinitions.h)
+VIDEO_RESOLUTION = 0    	# kQQVGA, 160x120
+
+# Then specify the color space desired among :
+#   kYuvColorSpace, kYUVColorSpace, kYUV422ColorSpace, kRGBColorSpace, etc.
+# (Definitions are available in alvisiondefinitions.h)
+VIDEO_COLORSPACE = 11		# RGB
+
+# Finally, select the minimal number of frames per second (fps) that your
+# vision module requires up to 30fps.
+VIDEO_FPS = 24;
+
+video_subscribeID = None
+# <------------------------------------------------------------->
 def main():
 	# ----------> 命令行解析 <----------
+	global ROBOT_IP
 	parser = OptionParser()
 	parser.add_option("--pip",
 		help="Parent broker port. The IP address or your robot",
@@ -168,6 +202,8 @@ def main():
 	pip   = opts.pip
 	pport = opts.pport
 
+	ROBOT_IP = pip
+
 	# ----------> 创建python broker <----------
     # We need this broker to be able to construct
     # NAOqi modules and subscribe to other modules
@@ -181,7 +217,7 @@ def main():
 
 	# ----------> 创建Robot ALProxy Module<----------
 	global tts, motion, memory, battery, autonomous, posture, leds
-	global sonar, aup
+	global sonar, aup, video
 	tts = ALProxy("ALTextToSpeech")
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
@@ -190,6 +226,7 @@ def main():
 	battery = ALProxy("ALBattery")
 	sonar = ALProxy("ALSonar")
 	aup = ALProxy("ALAudioPlayer")
+#	video = ALProxy("ALVideoDevice") 
 	autonomous = ALProxy("ALAutonomousLife")
 	autonomous.setState("disabled") 			# turn ALAutonomousLife off
 		
@@ -342,6 +379,37 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		posture.post.goToPosture("LyingBelly", 1.0)
 	elif command == COMMAND_POSTURE_LYINGBACK:				# posture - lying back
 		posture.post.goToPosture("LyingBack", 1.0)
+	elif command == COMMAND_POSTURE_RECORD:					# posture - record
+		global POSTURE_RECORD_FLAG
+		global posture_list
+		if POSTURE_RECORD_FLAG == False:	# 开始录制
+			POSTURE_RECORD_FLAG = True
+			record_on()
+		else:								# 结束录制
+			POSTURE_RECORD_FLAG = False
+			# 获取自定义姿势名称
+			posture_name = connection.recv(1024)
+			record_off()
+			print "Record Over:", posture_name
+			posture_list[posture_name] = posture_value
+	elif command == COMMAND_POSTURE_RECORD_STOP:			# posture record stop
+		POSTURE_RECORD_FLAG = False
+		motion.setStiffnesses("Body", 1.0)
+		tts.post.say('stop record')
+		motion.wakeUp()
+		motion.rest()
+	elif command == COMMAND_POSTURE_CUSTOMER:				# posture - customer
+		posture_name = connection.recv(1024)
+		print "Posture Customer:", posture_name
+		reappear(posture_name)
+	elif command == COMMAND_POSTURE_DELETE:					# posture - record
+		posture_name = connection.recv(1024)
+		print "Posture delete:", posture_name
+		if posture_name in posture_list:
+			del posture_list[posture_name]
+			tts.post.say('delete customer posture.')
+		else:
+			tts.post.say('wrong posture name.')
 	elif command == COMMAND_OBSTACLE:						# avoid obstacle
 		global OBSTACLE_ON
 		if OBSTACLE_ON == False:
@@ -828,6 +896,72 @@ def mysay(messages):
 	tts.setLanguage("English")
 	# 5. 退出线程
 	thread.exit_thread()
+
+def video_setup():
+	'''
+		打开video系统
+	'''
+	# ----------> 视频模块 <----------
+	global video_subscribeID
+	# 订阅模块
+	video_subscribeID = video.subscribeCamera(VIDEO_NAME, 
+												0, 
+												VIDEO_RESOLUTION, 
+												VIDEO_COLORSPACE, 
+												VIDEO_FPS)
+	# 	
+	
+
+def video_camera():
+	'''
+		发送图片给远程客户端
+	'''
+
+def record_on():
+	'''
+		将机器人全身关节放松，等待用户设置姿势，设置姿势后记录所有关节值；
+	'''
+	# 蹲下再站立，保证安全
+	global motion, tts
+	motion.rest()
+	motion.wakeUp()
+	# 放松所有关节
+	tts.say("rest all joints")
+	motion.setStiffnesses("Body", 0.0) # 非僵硬状态，此时可任意改变机器人的姿态，程序控制无效。
+
+def record_off():
+	global motion, tts
+	# 锁定所有关节
+	tts.say("lock all joints")
+	motion.setStiffnesses("Body", 1.0) # 僵硬状态, 此时机器人的关节锁定，可以程序控制，不可人工移动。
+	# 记录关节数值
+	tts.say('recording')
+	namelist = motion.getBodyNames('Body')
+	anglelist = motion.getAngles('Body', True)
+	global posture_value
+	posture_value = {}	# 清空姿势
+	for i in range(len(namelist)):
+		posture_value[namelist[i]] = anglelist[i]
+# 记录完毕, 将机器人复位
+	tts.say('ok, recorded.')
+	motion.rest()
+
+def reappear(posture_name):
+	'''
+		恢复记录的姿势
+	'''
+	global posture_list
+	global motion, tts
+	# 先检查posture_name的合法性
+	if posture_name in posture_list:
+		posture_value = posture_list[posture_name]
+		motion.wakeUp()
+		tts.post.say("reappear recorded posture")
+		for name, angle in posture_value.items():
+			motion.post.setAngles(name, angle, 0.1)	
+		time.sleep(3)
+	else:
+		tts.post.say('wrong posture name.')
 
 if __name__ == "__main__":
 	main()
