@@ -22,7 +22,7 @@ def main(robot_IP, robot_PORT=9559):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", type=str, default="192.168.1.100", help="Robot ip address")
+    parser.add_argument("--ip", type=str, default="192.168.2.100", help="Robot ip address")
     parser.add_argument("--port", type=int, default=9559, help="Robot port number")
     args = parser.parse_args()
 	# ----------> 执行main函数 <----------
