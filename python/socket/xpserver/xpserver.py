@@ -403,15 +403,16 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		else:
 			tts.post.say('wrong posture name.')
 	elif command == COMMAND_OBSTACLE:						# avoid obstacle
-		global OBSTACLE_ON
-		print 'OBSTACLE_ON:', OBSTACLE_ON
-		if OBSTACLE_ON == False:
-			OBSTACLE_ON = True
+		print 'old_OBSTACLE_ON:', avoid_getflag()
+		if avoid_getflag() == False:
+			avoid_setflag(True)
 			avoid_connect2robot(ROBOT_IP, ROBOT_PORT)
-			print 'motion:', avoid_motion
+			print 'motion:', motion
+			print 'avoid_motion:', avoid_motion
+			print 'new_OBSTACLE_ON:', avoid_getflag()
 			thread.start_new_thread(avoid_obstacle, ())
 		else:
-			OBSTACLE_ON = False
+			avoid_setflag(False)
 			motion.stopMove()	
 	elif command == COMMAND_MUSIC_ON:						# 音乐播放器打开
 		if MUSIC_FLAG == True:

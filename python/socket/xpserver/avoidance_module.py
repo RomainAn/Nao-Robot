@@ -23,7 +23,7 @@ import almath			# almath.TO_RAD, 角度转弧度
 # 障碍物标志
 OBSTACLE_L = False 	# True则左侧有障碍
 OBSTACLE_R = False  # True则右侧有障碍
-OBSTACLE_ON = True	# 避障标志位，为False时退出避障循环
+OBSTACLE_ON = False	# 避障标志位，为False时退出避障循环
 
 # 障碍物全局变量
 OBSTACLE_DISTANCE = 0.5	# 设置检测的安全距离
@@ -36,6 +36,8 @@ avoid_motion = avoid_memory = avoid_sonar = None
 def main(robot_IP, robot_PORT=9559):
 	# ----------> avoidance <----------
 	avoid_connect2robot(robot_IP)
+	global OBSTACLE_ON
+	OBSTACLE_ON = True
 	try:
 		avoid_obstacle()
 	except KeyboardInterrupt:
@@ -44,6 +46,18 @@ def main(robot_IP, robot_PORT=9559):
 		avoid_motion.stopMove()
 		print "Interrupted by user, shutting down"
 		sys.exit(0)
+
+def avoid_getflag():
+	'''
+		返回运行FLAG，为True表示正在运行, 为False表示停止工作;
+	'''
+	return OBSTACLE_ON
+def avoid_setflag(bools):
+	'''设置运行FLAG
+	'''
+	global OBSTACLE_ON
+	OBSTACLE_ON = bools
+	print 'set OBSTACLE_ON ->', bools
 
 def avoid_connect2robot(robot_IP, robot_PORT=9559):
 	'''
@@ -70,7 +84,8 @@ def avoid_obstacle():
 	avoid_motion.moveInit()
 	# 订阅超声波
 	avoid_sonar.subscribe("avoidance_module")
-	print 'start avoid obstacle'
+	print 'start avoid obstacle, obstacle_on(FLAG):', OBSTACLE_ON
+	print 'avoid_obstacle() - avoid_motion:', avoid_motion
 	while OBSTACLE_ON == True:			# 避障标识为True，则持续循环检测
 		# 1. 检测障碍物
 		avoid_check()
