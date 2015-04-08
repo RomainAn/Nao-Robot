@@ -8,7 +8,7 @@ from naoqi import ALProxy
 # 2. Create an ALproxy to the module you want to use
 # 3. Call a method
 
-robot_ip = "192.168.1.100"
+robot_ip = "192.168.2.100"
 robot_port = 9559	# default port : 9559
 
 # ALTextToSpeech is the module of NAoqi dedicated to speech. 

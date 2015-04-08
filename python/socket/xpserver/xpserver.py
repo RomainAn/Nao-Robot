@@ -7,7 +7,7 @@
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/03/26 >
-#	> Last Changed:		< 2015/03/31 >
+#	> Last Changed:		< 2015/04/08 >
 #	> Description:		Nao Robot 远程控制-服务器端
 #						接受客户端发来的指令，执行相应功能。
 #						自动载入该模块，自动载入配置文件：/home/nao/naoqi/preferences/autoload.ini
@@ -15,10 +15,11 @@
 
 import sys
 import time
+from optparse import OptionParser
 from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
-from optparse import OptionParser
+# 自定义Python Module
 from unicode_tools import *
 
 import socket
