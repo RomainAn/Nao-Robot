@@ -99,6 +99,7 @@ POSTURE_RECORD_FLAG = False		 # 自定义姿势录制Flag
 ROBOT_IP = '192.168.2.100'
 ROBOT_PORT = 9559
 connection = None				# socket连接
+POSTURE_CHANGE_SPEED = 0.8		# 姿势切换速度, (0~1.0)
 tts = motion = memory = battery = autonomous = posture = leds = None
 sonar = None
 aup = None
@@ -314,6 +315,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		motion.move(0, 0, -0.3)
 	elif command == COMMAND_DISCONNECT:						# disconnect
 		global CONNECT_FLAG
+		motion.rest()
 		CONNECT_FLAG = False
 	elif command == COMMAND_HEADYAW:						# head yaw
 		# 头部左右转动(Yaw轴)
@@ -367,19 +369,19 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		# goToPosture()切换姿态是智能的，计算出到达目的姿势所需要的移动路径，进行改变。
 		# 阻塞调用,这里加post实现后台调用。
 	elif command == COMMAND_POSTURE_STANDZERO:				# posture - stand zero
-		posture.post.goToPosture("StandZero", 1.0)
+		posture.post.goToPosture("StandZero", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_MOVEINIT:				# posture - move init / stand init
-		posture.post.goToPosture("StandInit", 1.0)
+		posture.post.goToPosture("StandInit", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_CROUCH:					# posture - Crouch
-		posture.post.goToPosture("Crouch", 1.0)
+		posture.post.goToPosture("Crouch", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_SIT:					# posture - sit
-		posture.post.goToPosture("Sit", 1.0)
+		posture.post.goToPosture("Sit", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_SITRELAX:				# posture - sit relax
-		posture.post.goToPosture("SitRelax", 1.0)
+		posture.post.goToPosture("SitRelax", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_LYINGBELLY:				# posture - lying belly
-		posture.post.goToPosture("LyingBelly", 1.0)
+		posture.post.goToPosture("LyingBelly", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_LYINGBACK:				# posture - lying back
-		posture.post.goToPosture("LyingBack", 1.0)
+		posture.post.goToPosture("LyingBack", POSTURE_CHANGE_SPEED)
 	elif command == COMMAND_POSTURE_RECORD:					# posture - record
 		global POSTURE_RECORD_FLAG
 		global posture_list
@@ -925,7 +927,7 @@ def record_on():
 	# 蹲下再站立，保证安全
 	global motion, tts
 	motion.rest()
-	motion.wakeUp()
+	#motion.wakeUp()
 	# 放松所有关节
 	tts.say("rest all joints")
 	motion.setStiffnesses("Body", 0.0) # 非僵硬状态，此时可任意改变机器人的姿态，程序控制无效。
@@ -956,7 +958,8 @@ def reappear(posture_name):
 	# 先检查posture_name的合法性
 	if posture_name in posture_list:
 		posture_value = posture_list[posture_name]
-		motion.wakeUp()
+		motion.rest()
+		motion.setStiffnesses("Body", 1.0)
 		tts.post.say("reappear recorded posture")
 		for name, angle in posture_value.items():
 			motion.post.setAngles(name, angle, 0.1)	
