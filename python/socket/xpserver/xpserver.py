@@ -11,6 +11,8 @@
 #	> Description:		Nao Robot 远程控制-服务器端
 #						接受客户端发来的指令，执行相应功能。
 #						自动载入该模块，自动载入配置文件：/home/nao/naoqi/preferences/autoload.ini
+#
+#						python xpserver.py --pip '192.168.2.100' --pport 9559
 #################################################################
 
 import sys
@@ -20,7 +22,8 @@ from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
 # 自定义Python Module
-from unicode_tools import *
+from unicode_tools import *				# Unicode汉字识别模块
+from avoidance_module import *			# 超声波避障模块
 
 import socket
 import sys      # sys.exit() 退出main函数
@@ -74,7 +77,6 @@ COMMAND_POSTURE_RECORD = 'POSTURE_RECORD'				# 记录自定义姿势
 COMMAND_POSTURE_RECORD_STOP = 'POSTURE_RECORD_STOP'		# 中断记录
 COMMAND_POSTURE_CUSTOMER = 'POSTURE_CUSTOMER'			# 调用自定义姿势
 COMMAND_POSTURE_DELETE = 'POSTURE_DELETE'				# 删除自定义姿势
-
 # 避障
 COMMAND_OBSTACLE = 'OBSTACLE'							# 超声波避障
 # 音乐播放器
@@ -134,17 +136,6 @@ FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
                "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
 ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
 
-
-# <------------------------------------------------------------->
-# 障碍物标志
-OBSTACLE_L = False 	# True则左侧有障碍
-OBSTACLE_R = False  # True则右侧有障碍
-OBSTACLE_ON = False	# 避障标志位，为False时退出避障循环
-
-OBSTACLE_DISTANCE = 0.5	# 设置检测的安全距离
-OBSTACLE_DELAY = 0.3	# 设置延时事件, 单位：秒
-MOVE_SPEED = 0.4		# 移动速度, 单位: m/s
-TURN_ANGLE = 20			# 旋转角度，单位: 度
 # <------------------------------------------------------------->
 # 音乐播放器
 MUSIC_FLAG = False					# 音乐播放器Flag, 为True表示正在运行相应播放器功能
@@ -413,11 +404,15 @@ def Operation(connection, command):	# 根据指令执行相应操作
 			tts.post.say('wrong posture name.')
 	elif command == COMMAND_OBSTACLE:						# avoid obstacle
 		global OBSTACLE_ON
+		print 'OBSTACLE_ON:', OBSTACLE_ON
 		if OBSTACLE_ON == False:
 			OBSTACLE_ON = True
-			thread.start_new_thread(obstacle, ())
+			avoid_connect2robot(ROBOT_IP, ROBOT_PORT)
+			print 'motion:', avoid_motion
+			thread.start_new_thread(avoid_obstacle, ())
 		else:
 			OBSTACLE_ON = False
+			motion.stopMove()	
 	elif command == COMMAND_MUSIC_ON:						# 音乐播放器打开
 		if MUSIC_FLAG == True:
 			pass
@@ -757,68 +752,6 @@ def FaceLed_Color(color='white',duration=0.1):
 	for led in FaceLedList:
 		leds.post.fadeRGB(led, 'white', duration)
 	thread.exit_thread() # 退出线程
-
-# --------------------------------------------------------------------- 超声波避障
-def obstacle():
-	''' 
-		固定间隔循环检测是否存在障碍，根据障碍物标志决定机器人的行走方向
-	'''
-	global OBSTACLE_L, OBSTACLE_R, OBSTACLE_ON
-
-	motion.wakeUp()
-	motion.moveInit()
-	sonar.subscribe("my_obstacle")
-	while OBSTACLE_ON == True:			# 避障标识为True，则持续循环检测
-		# 1. 检测障碍物
-		check()
-		# 2. 根据障碍物标志决定行走方向
-		avoid(OBSTACLE_L, OBSTACLE_R)	
-		# 3. 延时
-		time.sleep(OBSTACLE_DELAY)
-	sonar.unsubscribe("my_obstacle")
-	motion.stopMove()
-	motion.rest()
-	thread.exit_thread()
-	
-def check():
-	'''
-		检测超声波数值，设置标志位
-	'''
-	left = memory.getData("Device/SubDeviceList/US/Left/Sensor/Value")
-	right = memory.getData("Device/SubDeviceList/US/Right/Sensor/Value")
-
-	global OBSTACLE_L, OBSTACLE_R
-	if left > OBSTACLE_DISTANCE: 		# 超过安全距离，无障碍
-		OBSTACLE_L = False
-	else:								# 小于安全距离，有障碍
-		OBSTACLE_L = True
-	if right > OBSTACLE_DISTANCE: 		# 超过安全距离，无障碍
-		OBSTACLE_R = False
-	else:								# 小于安全距离，有障碍
-		OBSTACLE_R = True
-
-# 	FLAG_L		FLAG_R				operation
-# 	False		False				无障碍物，直走
-#	False		True				右侧障碍，左转
-#	True		False				左侧障碍，右转
-#	True		True				左右障碍，左转
-def avoid(flag_L, flag_R):
-	if flag_L == False:
-		if flag_R == False:
-			motion_go()			
-		else:
-			motion_turn_left()
-	else:
-		if flag_R == False:
-			motion_turn_right()
-		else:
-			motion_turn_left()
-def motion_go():
-	motion.move(MOVE_SPEED, 0, 0)
-def motion_turn_left():
-	motion.post.moveTo(0, 0, TURN_ANGLE * almath.TO_RAD)
-def motion_turn_right():
-	motion.post.moveTo(0, 0, -1.0 * TURN_ANGLE * almath.TO_RAD)
 # ---------------------------------------------------------------------  音乐播放器
 def scan_mp3():
 	'''
