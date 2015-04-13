@@ -21,6 +21,7 @@ import sys
 import os
 import time
 import threading        # 多线程类
+import urllib   		# urllib.urlretrieve
 
 class MP3player(threading.Thread):
 	'''
@@ -59,6 +60,7 @@ class MP3player(threading.Thread):
 		#	start()函数中有一段死循环，用于检测播放进度以便于结束时切换下一首歌曲;
 		# 将该线程设置为守护线程，这样就主线程就不会以为该线程的循环未结束而挂起。
 		self.setDaemon(True)
+		self.start()			# run()函数仅为一段死循环，作为进度检测之用;
 
 	def getPath(self):
 		return self.path
@@ -82,7 +84,9 @@ class MP3player(threading.Thread):
 	def setVolume(self, volume=0.5):
 		'''音量调节, volume [0,1]'''
 		if volume >= 0 and volume <= 1:
-		   self.aup.setVolume(self.playfileID, volume)
+		   self.volume = volume
+		   self.aup.setVolume(self.playfileID, self.volume)
+		   print 'Music Volume:', self.volume * 100, '%'
 		else:
 			print 'setVolume() Error: wrong volume(should in [0,1])'
 	def upVolume(self, change=0.05):
@@ -121,9 +125,7 @@ class MP3player(threading.Thread):
 			self.play()
 	def run(self):
 		'''调用类函数start(), 会运行该函数; start()只能调用一次'''
-		# 1. 播放音乐
-		self.play()
-		# 2. 开启进度检测
+		# 开启进度检测
 		while True:
 			if self.playflag == True: # 正在播放音乐
 				postion = self.aup.getCurrentPosition(self.playfileID)
@@ -191,13 +193,35 @@ class MP3player(threading.Thread):
 				if filename.find('.mp3') != -1:			# 找不到后缀才返回-1
 					filepath = os.path.join(root, filename)
 					self.playlist.append(filepath)		# 将找到的mp3文件的相对路径加入播放列表
+	def downloadMP3(self, name, url):
+		'''
+			下载MP3音乐, 下载好音乐后自动切歌
+			参数:	name, 下载音乐的名称;
+					url, 下载地址;
+		'''
+		try:
+			# 使用urllib下载音乐
+			print '>>> Start to download music [%s]' % name
+			urllib.urlretrieve(url, self.path + name + '.mp3')
+			print '>>> Download Completed'
+			# 将下载好的音乐添加在播放列表中
+			self.playlist.append(self.path + name + '.mp3')
+			# 切换音乐
+			self.playindex = len(self.playlist) - 2
+			self.nextSong()
+			if self.playflag == False:	# 没有播放音乐, 则开始播放
+				self.play()
+		except Exception,e:
+		   print 'Exception:',e
+		   print 'downloadMP3()'
+
 
 def main(robot_IP, robot_PORT=9559):
 	# ----------> avoidance <----------
 	player = MP3player(robot_IP, robot_PORT)
 	try:
-		print 'test start()'
-		player.start()	
+		print 'test play()'
+		player.play()	
 		time.sleep(2)
 		
 		print 'test pause()'
@@ -231,7 +255,8 @@ def main(robot_IP, robot_PORT=9559):
 		player.forward()
 		time.sleep(2)
 
-
+#		print 'test download'
+#		player.downloadMP3('')
 
 #		print 'test stop'
 #		player.stop()

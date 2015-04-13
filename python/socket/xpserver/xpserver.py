@@ -21,17 +21,17 @@ from optparse import OptionParser
 from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
+
 # 自定义Python Module
 from unicode_tools import *				# Unicode汉字识别模块
 from avoidance_module import *			# 超声波避障模块
+from MP3_Player import *				# 音乐播放器模块
 
 import socket
 import sys      # sys.exit() 退出main函数
 import almath   # 角度转弧度(almath.TO_RAD)
 import thread   # 多线程
 import time     # 延时函数 time.sleep(1)
-import os		# os.walk
-import urllib	# urllib.urlretrieve
 
 LISTEN_PORT = 8001 # 服务器监听端口
 # <-------------------------------------------------------------> Command 定义
@@ -104,10 +104,11 @@ connection = None				# socket连接
 POSTURE_CHANGE_SPEED = 0.8		# 姿势切换速度, (0~1.0)
 tts = motion = memory = battery = autonomous = posture = leds = None
 sonar = None
-aup = None
 video = None
 
+# 类示例
 avoid = None
+mp3player = None
 
 # 自定义姿势列表, key为自定义名称, value为全身姿势值; 
 posture_list = {}
@@ -138,23 +139,6 @@ TripleClick = None			# 退出登录，设置为胸前按钮三连击，是为了
 FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
                "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
 ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
-
-# <------------------------------------------------------------->
-# 音乐播放器
-MUSIC_FLAG = False					# 音乐播放器Flag, 为True表示正在运行相应播放器功能
-MusicPath = '/home/nao/music/'		# 歌曲文件夹
-MusicList = []      # 歌曲列表；程序启动后会扫描一遍音乐文件夹；为绝对路径地址
-MusicPoint = 0      # 指向当前播放音乐的索引, 范围 range(len(MusicList))
-PlayFlag = False    # 播放标志位, 播放音乐时标识为True
-PlayFileID = None   # 正在播放文件的fileID
-MyVolume = 0.50     # 音量, [0.0 ~ 1.0]
-
-# 与密码系统重合，注意在事件回调函数中利用标志位区分
-#FrontTouch = None           # 下一首
-#MiddleTouch = None          # 开始/暂停
-#RearTouch = None            # 上一首
-#LeftFootTouch = None        # Volume +
-#RightFootTouch = None       # Volume -
 
 # <------------------------------------------------------------->
 # 视频系统
@@ -212,7 +196,7 @@ def main():
 
 	# ----------> 创建Robot ALProxy Module<----------
 	global tts, motion, memory, battery, autonomous, posture, leds
-	global sonar, aup, video
+	global sonar, video
 	tts = ALProxy("ALTextToSpeech")
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
@@ -220,7 +204,6 @@ def main():
 	leds = ALProxy("ALLeds")
 	battery = ALProxy("ALBattery")
 	sonar = ALProxy("ALSonar")
-	aup = ALProxy("ALAudioPlayer")
 #	video = ALProxy("ALVideoDevice") 
 	autonomous = ALProxy("ALAutonomousLife")
 	autonomous.setState("disabled") 			# turn ALAutonomousLife off
@@ -228,6 +211,9 @@ def main():
 	# ----------> 自己实现的类 <----------
 	global avoid
 	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 	# 超声波避障类
+
+	global mp3player
+	mp3player = MP3player(ROBOT_IP, ROBOT_PORT)	# 音乐播放器模块
 		
 	# ----------> 触摸登录模块 <----------
 	global FrontTouch, MiddleTouch, RearTouch
@@ -238,13 +224,6 @@ def main():
 	LeftFootTouch = LeftFootTouch("LeftFootTouch")
 	RightFootTouch = RightFootTouch("RightFootTouch")
 	TripleClick = TripleClick("TripleClick")
-
-	# ----------> 音乐播放器模块 <----------
-	# 启动后需要提前加载第一个音乐文件
-	global PlayFileID
-	scan_mp3()          # 先扫描文件夹
-	filename = MusicList[MusicPoint]
-	PlayFileID = aup.loadFile(filename)
 
 	# 未通过验证前，main()睡觉
 	while VERIFY_FLAG == False:
@@ -280,13 +259,12 @@ def main():
 	except KeyboardInterrupt:
 		print
 		print "Interrupted by user, shutting down"
-		aup.stopAll()				# 关闭所有音乐
 		avoid.setflag(False)		# 关闭避障
+		mp3player.stop()			# 关闭音乐
 		myBroker.shutdown()
 		sys.exit(0)
 
 def Operation(connection, command):	# 根据指令执行相应操作
-	global MUSIC_FLAG
 	if command == COMMAND_WAKEUP:							# wakeup
 		motion.post.wakeUp()
 	elif command == COMMAND_REST:							# rest
@@ -420,32 +398,27 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		else:
 			avoid.setflag(False)
 	elif command == COMMAND_MUSIC_ON:						# 音乐播放器打开
-		if MUSIC_FLAG == True:
+		if mp3player.getFlag() == True:
 			pass
 		else:
+			# 其实音乐播放器在初始化类实例时已经准备好了，可直接play(),pasue();
 			tts.post.say("Music!")
-			MUSIC_FLAG = True		# 标志位设为True, 触摸功能开启
-			thread.start_new_thread(timer_check, ())
 	elif command == COMMAND_MUSIC_OFF:						# 音乐播放器关闭
-		MUSIC_FLAG = False		# 标志位设为False, 触摸功能失效
-		aup.stopAll()
+		mp3player.stop()
 		tts.post.say("Stop Music!")
 	elif command == COMMAND_MUSIC_PLAY:						# music play
-		memory.raiseEvent('MiddleTactilTouched', 1.0)
-	elif command == COMMAND_MUSIC_PAUSE:					# music play
-		memory.raiseEvent('MiddleTactilTouched', 1.0)
+		mp3player.play()
+	elif command == COMMAND_MUSIC_PAUSE:					# music pause
+		mp3player.pause()
 	elif command == COMMAND_MUSIC_NEXT:						# music next song
-		memory.raiseEvent('FrontTactilTouched', 1.0)
+		mp3player.nextSong()
 	elif command == COMMAND_MUSIC_PREVIOUS:					# music previous song
-		memory.raiseEvent('RearTactilTouched', 1.0)
+		mp3player.previousSong()
 	elif command == COMMAND_MUSIC_UP:						# music volume up
-		global MyVolume
 		volume = connection.recv(1024)
 		volume = int(volume) / 100.0
 		if volume >= 0 and volume <= 1.00:
-			MyVolume = volume
-			aup.setVolume(PlayFileID, MyVolume)
-			print "Volume:", volume * 100, "%"
+			mp3player.setVolume(volume)
 	elif command == COMMAND_MUSIC_URL:						# download mp3 file
 		buf = connection.recv(1024)
 		# 需要分隔歌名和URL
@@ -455,7 +428,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		print "Music Name:", filename
 		print "Download URL:", url
 		tts.post.say("Download music")
-		thread.start_new_thread(download_mp3, (filename,url))	# 开一新线程下载音乐
+		mp3player.downloadMP3(filename, url)
 	else:														# error
 		pass
 
@@ -543,31 +516,15 @@ class FrontTouch(ALModule):
 		# to avoid repetitions
 
 		# value == 1.0, 即触摸响应；不考虑value == 0, 即离开触摸响应；
-		if value == 0: # 不符合离开触摸区域的触发时间，直接返回；
+		# VERIFY_FLAG == True, 表示通过验证, 则此时触摸也无反应
+		if value == 0 or VERIFY_FLAG == True: 
 			return
 
-		if VERIFY_FLAG == True and MUSIC_FLAG == False:
-			# 通过验证，而未打开音乐播放器，此时触摸无反应
-			return
 		memory.unsubscribeToEvent("FrontTactilTouched",
 			"FrontTouch")
 
-		if VERIFY_FLAG == False:		# 登录系统
-			PASSWD.append(HEAD_FRONT)
-			tts.post.say("1")
-		elif MUSIC_FLAG == True:		# 播放器系统
-			global MusicPoint, PlayFileID
-			MusicPoint = (MusicPoint + 1) % len(MusicList)
-			filename = MusicList[MusicPoint]
-			print "Next Song:", MusicList[MusicPoint]
-			if PlayFlag == True:        # 播放音乐时切歌
-				# 停止播放
-				aup.pause(PlayFileID)
-				# 切歌播放
-				PlayFileID = aup.post.playFileInLoop(filename, MyVolume, 0)
-			else:                       # 暂停音乐时切歌
-				# 载入下一首歌曲
-				PlayFileID = aup.loadFile(filename)	
+		PASSWD.append(HEAD_FRONT)
+		tts.post.say("1")
 			
         # Subscribe again to the event
 		memory.subscribeToEvent("FrontTactilTouched",
@@ -583,26 +540,14 @@ class MiddleTouch(ALModule):
 			"onTouched")
 
 	def onTouched(self, strVarName, value):
-		if value == 0:
-			return
-		if VERIFY_FLAG == True and MUSIC_FLAG == False:
+		if value == 0 or VERIFY_FLAG == True:
 			return
 		memory.unsubscribeToEvent("MiddleTactilTouched",
 			"MiddleTouch")
 
-		if VERIFY_FLAG == False:	
-			PASSWD.append(HEAD_MIDDLE)
-			tts.post.say("2")
-		elif MUSIC_FLAG == True:
-			global PlayFlag, PlayFileID
-			if PlayFlag == False:           # 没有播放音乐，则开始播放音乐
-				PlayFlag = True
-				aup.post.playInLoop(PlayFileID, MyVolume, 0)
-				print "Music Play"
-			else:                           # 正在播放音乐，则暂停播放
-				PlayFlag = False
-				aup.pause(PlayFileID)
-				print "Pause"	
+		PASSWD.append(HEAD_MIDDLE)
+		tts.post.say("2")
+
 		memory.subscribeToEvent("MiddleTactilTouched",
 			"MiddleTouch",
 			"onTouched")
@@ -615,28 +560,13 @@ class RearTouch(ALModule):
 			"onTouched")
 
 	def onTouched(self, strVarName, value):
-		if value == 0:
-			return
-		if VERIFY_FLAG == True and MUSIC_FLAG == False:
+		if value == 0 or VERIFY_FLAG == True:
 			return
 		memory.unsubscribeToEvent("RearTactilTouched",
 			"RearTouch")
-		if VERIFY_FLAG == False:
-			PASSWD.append(HEAD_REAR)
-			tts.post.say("3")
-		elif MUSIC_FLAG == True:
-			global MusicPoint, PlayFileID
-			MusicPoint = (MusicPoint + len(MusicList) - 1) % len(MusicList)
-			filename = MusicList[MusicPoint]
-			print "Previous Song:", MusicList[MusicPoint]
-			if PlayFlag == True:        # 播放音乐时切歌
-				# 停止播放
-				aup.pause(PlayFileID)
-				# 切歌播放
-				PlayFileID = aup.post.playFileInLoop(filename, MyVolume, 0)
-			else:                       # 暂停音乐时切歌
-				# 载入下一首歌曲
-				PlayFileID = aup.loadFile(filename)
+
+		PASSWD.append(HEAD_REAR)
+		tts.post.say("3")
 				
 		memory.subscribeToEvent("RearTactilTouched",
 			"RearTouch",
@@ -683,14 +613,14 @@ class RightFootTouch(ALModule):
    			在VERIFY_FLAG = False时，为清空密码；
 		'''
 		global VERIFY_FLAG
-		if value == 0:
+		if value == 0 or VERIFY_FLAG == True:
 			return
 		memory.unsubscribeToEvent("RightBumperPressed",
 			"RightFootTouch")
 
-		if VERIFY_FLAG == False:
-			tts.post.say("Empty password.")
-			PASSWD = []
+		tts.post.say("Empty password.")
+		PASSWD = []
+		
 		memory.subscribeToEvent("RightBumperPressed",
 			"RightFootTouch",
 			"onTouched")
@@ -758,64 +688,6 @@ def FaceLed_Color(color='white',duration=0.1):
 	for led in FaceLedList:
 		leds.post.fadeRGB(led, 'white', duration)
 	thread.exit_thread() # 退出线程
-# ---------------------------------------------------------------------  音乐播放器
-def scan_mp3():
-	'''
-	    从指定的文件夹中扫描出MP3格式的文件
-	'''
-	global MusicList
-	MusicList = []
-	for root, dirs, files in os.walk(MusicPath):
-		# root   #当前遍历到的目录的根
-		# dirs   #当前遍历到的目录的根下的所有目录
-		# files  #当前遍历到的目录的根下的所有文件
-		for filename in files:
-			if filename.find('.mp3') != -1:         # 找不到后缀才返回-1
-				filepath = os.path.join(root, filename)
-				MusicList.append(filepath)          # 将找到的mp3文件的地址加入MusicList
-
-def timer_check():
-	'''
-		检查当前音乐的播放进度，结束后切换下一首歌曲;
-	'''
-	while MUSIC_FLAG == True:
-		if PlayFlag == True:
-			postion = aup.getCurrentPosition(PlayFileID)
-			length = aup.getFileLength(PlayFileID)
-			if postion >= length - 2: # 正在播放，且进度即将结束
-				memory.raiseEvent('FrontTactilTouched', 1.0) # 触发下一首对应的事件
-		else:
-			pass
-		time.sleep(1)
-	thread.exit_thread()	
-def download_mp3(filename, url):
-	'''
-		开启一个新线程，用来下载MP3音乐；下载好音乐后自动切歌
-	'''
-	global MusicList, MusicPoint, PlayFileID
-	try:
-		print '>>> Start to download music [%s]' % filename
-		urllib.urlretrieve(url, MusicPath+filename+'.mp3')
-		print '>>> Download Completed'
-		tts.post.say("Download complete!")
-		# 将下载好的音乐添加在播放列表中
-		MusicList.append(MusicPath+filename+'.mp3')
-
-		# 切换歌曲
-		if PlayFlag == False:	# 没有播放音乐, 则载入播放
-			MusicPoint = len(MusicList) - 1
-			filename = MusicList[MusicPoint]
-			PlayFileID = aup.loadFile(filename)
-			memory.raiseEvent('MiddleTactilTouched', 1.0)
-		else:					# 正在播放音乐, 则调整MusicPoint, 实现下一首就是目标歌曲
-			MusicPoint = len(MusicList) - 2
-			memory.raiseEvent('FrontTactilTouched', 1.0)
-		# 关闭线程
-		thread.exit_thread()
-	except Exception,e:
-		print 'Exception:',e
-		print "download_mp3()"
-
 def mysay(messages):
 	'''
 		控制机器人说messages
