@@ -7,7 +7,7 @@
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/04/08 >
-#	> Last Changed: 
+#	> Last Changed: 	< 2015/04/13 >
 #	> Description:		超声波避障模块
 #						1.作为类使用，则import该文件，使用avoidance类;
 #						2.也可直接python avoidance_module.py, 直接运行超声波避障功能;
