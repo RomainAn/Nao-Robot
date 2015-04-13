@@ -3,7 +3,7 @@
 #################################################################
 #   Copyright (C) 2015 Sean Guo. All rights reserved.
 #														  
-#	> File Name:        < mp3player.py >
+#	> File Name:        < touch_mp3player.py >
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/03/30 >
