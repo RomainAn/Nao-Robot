@@ -30,8 +30,8 @@ def showNaoImage(IP, PORT):
 #	resolution = 2    # VGA 640x480
 	resolution = 0    # kQQVGA, 160x120
 #	colorSpace = 11   # RGB
-	colorSpace = 10   # YUV
-#	colorSpace = 9    # YUV422
+#	colorSpace = 10   # YUV
+	colorSpace = 9    # YUV422
 
 	videoClient = camProxy.subscribe("python_client2", resolution, colorSpace, 30)
 
