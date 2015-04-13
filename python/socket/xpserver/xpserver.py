@@ -107,6 +107,8 @@ sonar = None
 aup = None
 video = None
 
+avoid = None
+
 # 自定义姿势列表, key为自定义名称, value为全身姿势值; 
 posture_list = {}
 # 全身姿势, key为各个关节名, value为关节值;
@@ -222,6 +224,10 @@ def main():
 #	video = ALProxy("ALVideoDevice") 
 	autonomous = ALProxy("ALAutonomousLife")
 	autonomous.setState("disabled") 			# turn ALAutonomousLife off
+
+	# ----------> 自己实现的类 <----------
+	global avoid
+	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 	# 超声波避障类
 		
 	# ----------> 触摸登录模块 <----------
 	global FrontTouch, MiddleTouch, RearTouch
@@ -274,7 +280,8 @@ def main():
 	except KeyboardInterrupt:
 		print
 		print "Interrupted by user, shutting down"
-		aup.stopAll()	# 关闭所有音乐
+		aup.stopAll()				# 关闭所有音乐
+		avoid.setflag(False)		# 关闭避障
 		myBroker.shutdown()
 		sys.exit(0)
 
@@ -405,17 +412,13 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		else:
 			tts.post.say('wrong posture name.')
 	elif command == COMMAND_OBSTACLE:						# avoid obstacle
-		print 'old_OBSTACLE_ON:', avoid_getflag()
-		if avoid_getflag() == False:
-			avoid_setflag(True)
-			avoid_connect2robot(ROBOT_IP, ROBOT_PORT)
-			print 'motion:', motion
-			print 'avoid_motion:', avoid_motion
-			print 'new_OBSTACLE_ON:', avoid_getflag()
-			thread.start_new_thread(avoid_obstacle, ())
+		print 'old_OBSTACLE_ON:', avoid.getflag()
+		if avoid.getflag() == False:
+			avoid.setflag(True)
+			avoid.start()		# 开启避障
+			print 'new_OBSTACLE_ON:', avoid.getflag()
 		else:
-			avoid_setflag(False)
-			motion.stopMove()	
+			avoid.setflag(False)
 	elif command == COMMAND_MUSIC_ON:						# 音乐播放器打开
 		if MUSIC_FLAG == True:
 			pass
