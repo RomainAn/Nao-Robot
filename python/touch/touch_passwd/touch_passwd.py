@@ -58,7 +58,7 @@ class FrontTouch(ALModule):
 
 		# value == 1.0, 即触摸响应；不考虑value == 0, 即离开触摸响应；
 		# VERIFY_FLAG == False, 即未通过验证，此时才需要输入密码。验证后触摸无效；
-		if value == 0 or VERIFY_FLAG == True: # 不符合条件，直接返回；这样可以有效防止事件未订阅异常
+		if value == 0 or VERIFY_FLAG == True:# 不符合条件，直接返回；这样可以有效防止事件未订阅异常
 			return
 
 		memory.unsubscribeToEvent("FrontTactilTouched",
@@ -222,7 +222,7 @@ def main(ip, port):
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument("--ip", type=str, default="127.0.0.1",
+	parser.add_argument("--ip", type=str, default="192.168.2.100",
 						help="Robot ip address")
 	parser.add_argument("--port", type=int, default=9559,
 						help="Robot port number")
