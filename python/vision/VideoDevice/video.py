@@ -86,6 +86,8 @@ def getImage(videoProxy, subscriberID):
 	print "image.getHeight:", image[1]
 	print "image.getNbLayers:", image[2]
 	print "list.length:", len(image)
+	print 'image[6], type:', type(image[6])
+	print 'image[0], type:', type(image[0])
 
 	filename = 'data.yuv422' 
 	print 'save image to', filename

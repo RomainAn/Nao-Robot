@@ -17,6 +17,7 @@ import time
 import Image		# Python Image Library
 import socket
 import random
+import struct
 
 from naoqi import ALProxy
 
@@ -59,9 +60,17 @@ def main(IP, PORT):
 			while CONNECT == True:
 				# 发送YUV422图像至客户端
 				naoImage = camProxy.getImageRemote(videoClient)
-				array = naoImage[6]
-				connection.send('VIDEO#' + array + '\r')
-#				connection.send('VIDEO#' + str(random.randint(0,100)) + '\r')
+				array = naoImage[6]	
+
+#				for i in range(len(array)):
+#					connection.send(array[i])
+#					if (i % 5 == 0):
+#						connection.send('\r')
+#				connection.send('\r')
+
+				connection.send(bytes(array+'\n', 'utf-8'))
+
+#				connection.send('VIDEO#' + array + '\r#OVER\r')
 				print 'send image date successful.'
 #				time.sleep(1)	
 				CONNECT = False
