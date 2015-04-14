@@ -26,6 +26,7 @@ from naoqi import ALModule
 from unicode_tools import *				# Unicode汉字识别模块
 from avoidance_module import *			# 超声波避障模块
 from MP3_Player import *				# 音乐播放器模块
+from touch_password import *			# 触摸登录模块
 
 import socket
 import sys      # sys.exit() 退出main函数
@@ -109,37 +110,16 @@ video = None
 # 类示例
 avoid = None
 mp3player = None
+touch = None
 
 # 自定义姿势列表, key为自定义名称, value为全身姿势值; 
 posture_list = {}
 # 全身姿势, key为各个关节名, value为关节值;
 posture_value = {}
-# <------------------------------------------------------------->
-# 设定Head/Touch/Front=1,Head/Touch/Middle=2,Head/Touch/Rear=3
-HEAD_FRONT = 1
-HEAD_MIDDLE = 2
-HEAD_REAR = 3
-
-# 密码序列，只有按照下面序列依次触摸机器人，才会通过验证；
-PASSWORD = [1,3,2,3,1,2]
-PASSWD = []
-
-VERIFY_FLAG = True			# 密码验证标志，成功验证时改为True
-
-# Global variable to store the FrontTouch module instance
-FrontTouch = None			# 密码序列：1
-MiddleTouch = None			# 密码序列：2
-RearTouch = None			# 密码序列：3
-LeftFootTouch = None		# 确定密码
-RightFootTouch = None		# 清空密码
-TripleClick = None			# 退出登录，设置为胸前按钮三连击，是为了防止误操作;
-# <------------------------------------------------------------->
-
 # ----------> Face LED List <----------
 FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
                "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
 ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
-
 # <------------------------------------------------------------->
 # 视频系统
 
@@ -214,19 +194,14 @@ def main():
 
 	global mp3player
 	mp3player = MP3player(ROBOT_IP, ROBOT_PORT)	# 音乐播放器模块
-		
-	# ----------> 触摸登录模块 <----------
-	global FrontTouch, MiddleTouch, RearTouch
-	global LeftFootTouch, RightFootTouch, TripleClick
-	FrontTouch = FrontTouch("FrontTouch")
-	MiddleTouch = MiddleTouch("MiddleTouch")
-	RearTouch = RearTouch("RearTouch")
-	LeftFootTouch = LeftFootTouch("LeftFootTouch")
-	RightFootTouch = RightFootTouch("RightFootTouch")
-	TripleClick = TripleClick("TripleClick")
 
+
+	global touch
+	touch = touchPasswd("touch")
+	touch.setPassword('123312')					# 触摸登录模块
+		
 	# 未通过验证前，main()睡觉
-	while VERIFY_FLAG == False:
+	while touch.isVerify() == False:
 		time.sleep(1)
 
 	print "Successfully verified, open socket server..."
@@ -502,175 +477,6 @@ def RArmMoveInit(): # 配置Right Arm 为行走初始化的姿态。
 	motion.setAngles('RElbowRoll', 0.5, 0.2)
 	motion.setAngles('RWristYaw', 0, 0.2)
 	motion.setAngles('RHand', 0, 0.2)
-
-class FrontTouch(ALModule):
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-        # Subscribe to FrontTactilTouched event:
-		memory.subscribeToEvent("FrontTactilTouched",
-			"FrontTouch",
-			"onTouched")
-
-	def onTouched(self, strVarName, value):
-		# Unsubscribe to the event when talking,
-		# to avoid repetitions
-
-		# value == 1.0, 即触摸响应；不考虑value == 0, 即离开触摸响应；
-		# VERIFY_FLAG == True, 表示通过验证, 则此时触摸也无反应
-		if value == 0 or VERIFY_FLAG == True: 
-			return
-
-		memory.unsubscribeToEvent("FrontTactilTouched",
-			"FrontTouch")
-
-		PASSWD.append(HEAD_FRONT)
-		tts.post.say("1")
-			
-        # Subscribe again to the event
-		memory.subscribeToEvent("FrontTactilTouched",
-			"FrontTouch",
-			"onTouched")
-
-
-class MiddleTouch(ALModule):
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-		memory.subscribeToEvent("MiddleTactilTouched",
-			"MiddleTouch",
-			"onTouched")
-
-	def onTouched(self, strVarName, value):
-		if value == 0 or VERIFY_FLAG == True:
-			return
-		memory.unsubscribeToEvent("MiddleTactilTouched",
-			"MiddleTouch")
-
-		PASSWD.append(HEAD_MIDDLE)
-		tts.post.say("2")
-
-		memory.subscribeToEvent("MiddleTactilTouched",
-			"MiddleTouch",
-			"onTouched")
-
-class RearTouch(ALModule):
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-		memory.subscribeToEvent("RearTactilTouched",
-			"RearTouch",
-			"onTouched")
-
-	def onTouched(self, strVarName, value):
-		if value == 0 or VERIFY_FLAG == True:
-			return
-		memory.unsubscribeToEvent("RearTactilTouched",
-			"RearTouch")
-
-		PASSWD.append(HEAD_REAR)
-		tts.post.say("3")
-				
-		memory.subscribeToEvent("RearTactilTouched",
-			"RearTouch",
-			"onTouched")
-
-class LeftFootTouch(ALModule):
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-		memory.subscribeToEvent("LeftBumperPressed",
-			"LeftFootTouch",
-			"onTouched")
-
-	def onTouched(self, strVarName, value):
-		if value == 0 or VERIFY_FLAG == True:
-			return
-		memory.unsubscribeToEvent("LeftBumperPressed",
-			"LeftFootTouch")
-		
-		global PASSWD
-		tts.post.say("Confirm")
-		verify(PASSWD)
-		if VERIFY_FLAG == True: 	# 验证成功	
-			tts.post.say("OK! Welcome to Sword Art Online!")
-			thread.start_new_thread(FaceLed_Color, ('green',))
-		else:
-			tts.post.say("No! Wrong password.")
-			# 开新线程，变化Face LED
-			thread.start_new_thread(FaceLed_Color, ('red',)) # 2nd arg must be a tuple
-		PASSWD = []	# 无论验证与否，都清空密码；
-			
-		memory.subscribeToEvent("LeftBumperPressed",
-			"LeftFootTouch",
-			"onTouched")
-
-class RightFootTouch(ALModule):
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-		memory.subscribeToEvent("RightBumperPressed",
-			"RightFootTouch",
-			"onTouched")
-
-	def onTouched(self, strVarName, value):
-		'''	按右脚触摸，为清空密码；
-   			在VERIFY_FLAG = False时，为清空密码；
-		'''
-		global VERIFY_FLAG
-		if value == 0 or VERIFY_FLAG == True:
-			return
-		memory.unsubscribeToEvent("RightBumperPressed",
-			"RightFootTouch")
-
-		tts.post.say("Empty password.")
-		PASSWD = []
-		
-		memory.subscribeToEvent("RightBumperPressed",
-			"RightFootTouch",
-			"onTouched")
-
-class TripleClick(ALModule):
-	''' 胸前按钮三连接 - 退出登录。
-		注意：由于机器人自带的绑定事件，双击按钮会触发机器人的autonomous life，这里需要再关闭。
-		autonomous life会对编程控制产生干扰。
-	'''
-	def __init__(self, name):
-		ALModule.__init__(self, name)
-		memory.subscribeToEvent("ALChestButton/TripleClickOccurred",
-			"TripleClick",
-			"onClicked")
-
-	def onClicked(self, eventName):
-		'''
-			在通过验证后(VERIFY_FLAG=True)，通过胸前三连击退出登录。
-		'''
-		autonomous.setState("disabled")
-		global VERIFY_FLAG
-		if VERIFY_FLAG == False:
-			return
-		memory.unsubscribeToEvent("MiddleTactilTouched",
-			"MiddleTouch")
-
-		global PASSWD
-		PASSWD = []
-		VERIFY_FLAG = False
-		tts.post.say("Logout!")
-		thread.start_new_thread(FaceLed_Color, ('yellow',))
-			
-		memory.subscribeToEvent("MiddleTactilTouched",
-			"MiddleTouch",
-			"onTouched")
-
-def	verify(passwd):
-	'''	将用户输入的passwd与密码库PASSWORD对比
-		验证成功则配置标志位VERIFY_FLAG=True;
-		验证失败则VERIFY_FLAG=False
-	'''
-	global VERIFY_FLAG
-	if len(PASSWORD) != len(passwd):
-		VERIFY_FLAG = False	
-	else:
-		# 先设为True, 一旦有不相同的，立刻改为False
-		VERIFY_FLAG = True
-		for i in range(len(passwd)):
-			if PASSWORD[i] != passwd[i]:	
-				VERIFY_FLAG = False
 
 def FaceLed_Color(color='white',duration=0.1):
 	"""
