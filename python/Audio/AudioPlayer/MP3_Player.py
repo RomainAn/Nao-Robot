@@ -256,7 +256,9 @@ def main(robot_IP, robot_PORT=9559):
 		time.sleep(2)
 
 #		print 'test download'
-#		player.downloadMP3('')
+		music_name = '漫步人生路'
+		url = 'http://m1.music.126.net/YoKvhEpzjqFq79vy2jApLg==/1018147767327618.mp3'
+		player.downloadMP3(music_name, url)
 
 #		print 'test stop'
 #		player.stop()
