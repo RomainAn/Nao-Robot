@@ -12,7 +12,6 @@
 #						1.作为类使用，则import该文件，使用avoidance类;
 #						2.也可直接python avoidance_module.py, 直接运行超声波避障功能;
 #################################################################
- 
 """
 	超声波避障模块
 """
@@ -39,7 +38,6 @@ class avoidance(threading.Thread):
 		self.delay_seconds = 0.3	# 设置延时事件, 单位：秒
 		self.move_speed = 0.4		# 移动速度, 单位: m/s
 		self.turn_angle = 20		# 旋转角度，单位: 角度
-		
 		# naoqi.ALProxy
 		try:
 			self.motion = ALProxy("ALMotion", robot_ip, robot_port)
@@ -60,7 +58,6 @@ class avoidance(threading.Thread):
 		'''
 		self.run_flag = bools
 		return self.run_flag
-
 	def run(self):
 		''' 
 			固定间隔循环检测是否存在障碍，根据障碍物标志决定机器人的行走方向
@@ -80,14 +77,14 @@ class avoidance(threading.Thread):
 			self.avoid_operation()
 			# 3. 延时
 			time.sleep(self.delay_seconds)
+		# 直到run_flag为False才会跳出while循环;
 		# 取消订阅超声波
 		self.sonar.unsubscribe("Class_avoidance")
 		# 机器人复位
 		self.motion.stopMove()
 		self.motion.rest()
 	def stop(self):
-		self.run_flag = False
-
+		self.setflag(False)
 	def avoid_check(self):
 		'''
 			检测超声波数值，设置标志位
@@ -102,7 +99,6 @@ class avoidance(threading.Thread):
 			self.obstacle_right = False
 		else:								# 小于安全距离，有障碍
 			self.obstacle_right = True
-
 	def avoid_operation(self):
 		# 	left		right				operation
 		#   ----------------------------------------------
@@ -131,7 +127,7 @@ def main(robot_IP, robot_PORT=9559):
 	# ----------> avoidance <----------
 	avoid = avoidance(robot_IP, robot_PORT)
 	try:
-		avoid.start()
+		avoid.start()					# start()只能执行一次; run()可以线性多次执行;
 		time.sleep(10)
 #		avoid.setflag(False)		 	# 方法1: 通过设置标志位为False来停止
 		avoid.stop()					# 方法2: 通过调用stop()函数停止该线程类，其内部也是设置标志位.	

@@ -105,7 +105,6 @@ connection = None				# socket连接
 POSTURE_CHANGE_SPEED = 0.8		# 姿势切换速度, (0~1.0)
 tts = motion = memory = battery = autonomous = posture = leds = None
 sonar = None
-video = None
 
 # 类示例
 avoid = None
@@ -120,27 +119,6 @@ posture_value = {}
 FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
                "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
 ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
-# <------------------------------------------------------------->
-# 视频系统
-
-# First you have to choose a name for your Vision Module
-VIDEO_NAME = "xpserver_VM";
-
-# Then specify the resolution among :
-#   kQQVGA (160x120), kQVGA (320x240), kVGA (640x480) or k4VGA (1280x960, only with the HD camera).
-# (Definitions are available in alvisiondefinitions.h)
-VIDEO_RESOLUTION = 0    	# kQQVGA, 160x120
-
-# Then specify the color space desired among :
-#   kYuvColorSpace, kYUVColorSpace, kYUV422ColorSpace, kRGBColorSpace, etc.
-# (Definitions are available in alvisiondefinitions.h)
-VIDEO_COLORSPACE = 11		# RGB
-
-# Finally, select the minimal number of frames per second (fps) that your
-# vision module requires up to 30fps.
-VIDEO_FPS = 24;
-
-video_subscribeID = None
 # <------------------------------------------------------------->
 def main():
 	# ----------> 命令行解析 <----------
@@ -161,6 +139,7 @@ def main():
 	pip   = opts.pip
 	pport = opts.pport
 
+	# 如果运行前指定ip参数，则更新ROBOT_IP全局变量;
 	ROBOT_IP = pip
 
 	# ----------> 创建python broker <----------
@@ -176,7 +155,7 @@ def main():
 
 	# ----------> 创建Robot ALProxy Module<----------
 	global tts, motion, memory, battery, autonomous, posture, leds
-	global sonar, video
+	global sonar
 	tts = ALProxy("ALTextToSpeech")
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
@@ -184,7 +163,6 @@ def main():
 	leds = ALProxy("ALLeds")
 	battery = ALProxy("ALBattery")
 	sonar = ALProxy("ALSonar")
-#	video = ALProxy("ALVideoDevice") 
 	autonomous = ALProxy("ALAutonomousLife")
 	autonomous.setState("disabled") 			# turn ALAutonomousLife off
 
@@ -197,24 +175,24 @@ def main():
 
 
 	global touch
-	touch = touchPasswd("touch")
-	touch.setPassword('123312')					# 触摸登录模块
-		
-	# 未通过验证前，main()睡觉
-	while touch.isVerify() == False:
-		time.sleep(1)
+	touch = touchPasswd("touch")				# 触摸登录模块
+	touch.setPassword('132312')	
 
-	print "Successfully verified, open socket server..."
+#	跳过验证
+	touch.skipVerify()
+
 	# ----------> 开启socket服务器监听端口 <----------
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.bind((ROBOT_IP, LISTEN_PORT))
 	sock.listen(10)
+	# 目前只开放监听端口，但是不接受客户端连接，只有通过系统验证模块以后，才会接受socket连接;
 
 	global connection
 	global CONNECT_FLAG
 	try:
 		while True:		# 死循环	
-			if VERIFY_FLAG == True: 		# 等待客户端连接，单线程监听单一客户端; 
+			if touch.isVerify() == True: # 通过验证则开始接受socket连接
+				# 等待客户端连接，单线程监听单一客户端; 
 				connection,address = sock.accept()
 				tts.say("OK, socket connected")
 				print "socket connected, waitting for command"
@@ -229,14 +207,14 @@ def main():
 				tts.say("socket connection is closed.")
 				CONNECT_FLAG = False
 			else:
+				# 未通过系统验证模块, 则持续等待;
 				time.sleep(1)
-
 	except KeyboardInterrupt:
 		print
 		print "Interrupted by user, shutting down"
-		avoid.setflag(False)		# 关闭避障
+		avoid.stop()				# 关闭避障
 		mp3player.stop()			# 关闭音乐
-		myBroker.shutdown()
+		myBroker.shutdown()			# 关闭代理Broker
 		sys.exit(0)
 
 def Operation(connection, command):	# 根据指令执行相应操作
@@ -365,13 +343,15 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		else:
 			tts.post.say('wrong posture name.')
 	elif command == COMMAND_OBSTACLE:						# avoid obstacle
-		print 'old_OBSTACLE_ON:', avoid.getflag()
+		# 接受一个COMMAND_OBSTACLE命令，切换一次避障状态;
 		if avoid.getflag() == False:
-			avoid.setflag(True)
-			avoid.start()		# 开启避障
-			print 'new_OBSTACLE_ON:', avoid.getflag()
+			# 开启避障
+			tts.post.say('Start avoid obstacles.')
+			avoid.run()		
 		else:
-			avoid.setflag(False)
+			# 关闭避障
+			avoid.stop()
+			tts.post.say('Stop avoid obstacles.')
 	elif command == COMMAND_MUSIC_ON:						# 音乐播放器打开
 		if mp3player.getFlag() == True:
 			pass
@@ -395,17 +375,18 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		if volume >= 0 and volume <= 1.00:
 			mp3player.setVolume(volume)
 	elif command == COMMAND_MUSIC_URL:						# download mp3 file
+		# 获得待下载内容
 		buf = connection.recv(1024)
-		# 需要分隔歌名和URL
+		# 需要分隔歌名和URL, 格式已约定好;http前为歌曲名称, 之后为URL;
 		index = buf.find('http')
 		filename = buf[:index]
 		url = buf[index:]
-		print "Music Name:", filename
-		print "Download URL:", url
-		tts.post.say("Download music")
+		print "<Music Download> Name:", filename
+		print "<Music Download> URL: ", url
+		tts.post.say("Download music.")
 		mp3player.downloadMP3(filename, url)
 	else:														# error
-		pass
+		print 'Error Command'
 
 def mymoveinit():
 	"""判断机器人是否为站立状态，不是站立状态，则更改站立状态，并进行MoveInit.
@@ -514,26 +495,6 @@ def mysay(messages):
 	tts.setLanguage("English")
 	# 5. 退出线程
 	thread.exit_thread()
-
-def video_setup():
-	'''
-		打开video系统
-	'''
-	# ----------> 视频模块 <----------
-	global video_subscribeID
-	# 订阅模块
-	video_subscribeID = video.subscribeCamera(VIDEO_NAME, 
-												0, 
-												VIDEO_RESOLUTION, 
-												VIDEO_COLORSPACE, 
-												VIDEO_FPS)
-	# 	
-	
-
-def video_camera():
-	'''
-		发送图片给远程客户端
-	'''
 
 def record_on():
 	'''

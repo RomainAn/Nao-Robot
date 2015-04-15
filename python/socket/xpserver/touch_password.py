@@ -77,6 +77,17 @@ class touchPasswd(ALModule):
 		self.memory.subscribeToEvent("RightBumperPressed",
 									self.name,
 									"RightFootTouched")
+		# 使用事件:'ALChestButton/DoubleClickOccurred'作为退出登录按钮;
+		# 由于此事件默认被'ALAutonomousLife'模块使用，这里需要注销;	
+		sub_list = self.memory.getSubscribers('ALChestButton/DoubleClickOccurred')
+		# sub_list 为订阅该事件的订阅者, 这里一一取消订阅;
+		for sub in sub_list:
+			self.memory.unsubscribeToEvent('ALChestButton/DoubleClickOccurred', sub)
+		# 然后touchPasswd类订阅该事件
+		self.memory.subscribeToEvent("ALChestButton/DoubleClickOccurred",
+									self.name,
+									"DoubleClick")
+
 	def isVerify(self):
 		'''返回是否通过验证'''
 		return self.verify_flag
@@ -86,10 +97,11 @@ class touchPasswd(ALModule):
 			验证失败则VERIFY_FLAG=False
 		'''
 		if self.input_passwd == self.password:
+			# 密码正确，则设置标志位
 			self.verify_flag = True
-			self.tts.say("OK!Login in system.")
+			self.tts.say("OK! Login in system.")
 		else:
-			# 密码错误，则清空密码
+			# 密码错误，则设置标志位并清空密码
 			self.verify_flag = False
 			self.input_passwd = []
 			self.tts.say("No! Wrong password.")
@@ -103,6 +115,10 @@ class touchPasswd(ALModule):
 		# 加入新密码
 		for i in range(len(password)):
 			self.password.append(int(password[i]))
+	def skipVerify(self):
+		'''跳过验证，即无需输入密码，直接设置verify_flag为True;'''
+		self.verify_flag = True
+		self.tts.say('skip verify')
 
 	# 回调函数:
 	# Event: "FrontTactilTouched"
@@ -179,6 +195,25 @@ class touchPasswd(ALModule):
 			self.memory.subscribeToEvent("RightBumperPressed",
 									self.name,
 									"RightFootTouched")
+	def DoubleClick(self, eventName):
+		'''
+			对应事件：机器人胸前按钮二连击；
+			对应功能：注销登录；
+		'''
+		if self.verify_flag == False:
+			# 未通过验证, 则无需注销, 直接返回
+			return
+		# 注销操作
+		# 先取消订阅，避免回调函数多次调用冲突;
+		self.memory.unsubscribeToEvent("ALChestButton/DoubleClickOccurred", self.name)
+
+		self.verify_flag = False
+		self.tts.post.say('Log out.')
+
+		# Subscribe again to the event
+		self.memory.subscribeToEvent("ALChestButton/DoubleClickOccurred",
+								self.name,
+								"DoubleClick")
 def main(robot_IP, robot_PORT=9559):
 
 	# We need this broker to be able to construct NAOqi modules and subscribe to other modules
@@ -195,6 +230,7 @@ def main(robot_IP, robot_PORT=9559):
 	global touchSystem
 	touchSystem = touchPasswd("touchSystem")
 	touchSystem.setPassword('123')
+#	touchSystem.skipVerify()			# 直接跳过验证;
 	try:
 		# 没有通过验证，则一直循环等待;
 		while touchSystem.isVerify() == False:
