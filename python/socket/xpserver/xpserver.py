@@ -168,7 +168,8 @@ def main():
 
 	# ----------> 自己实现的类 <----------
 	global avoid
-	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 	# 超声波避障类
+	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 		# 超声波避障类
+
 
 	global mp3player
 	mp3player = MP3player(ROBOT_IP, ROBOT_PORT)	# 音乐播放器模块
@@ -197,7 +198,7 @@ def main():
 				tts.say("OK, socket connected")
 				print "socket connected, waitting for command"
 				CONNECT_FLAG = True
-				while (CONNECT_FLAG == True) and (VERIFY_FLAG == True): # 与客户端进行通信
+				while (CONNECT_FLAG == True) and (touch.isVerify() == True): # 与客户端进行通信
 					# 服务器接受指令
 					buf = connection.recv(1024)
 					print "command:[", buf, "]"
@@ -347,10 +348,13 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		if avoid.getflag() == False:
 			# 开启避障
 			tts.post.say('Start avoid obstacles.')
-			avoid.run()		
+			avoid.start()	
 		else:
 			# 关闭避障
+			global avoid
 			avoid.stop()
+			# 需要提前再实例化一个avoidance对象，以备下次使用;
+			avoid = avoidance(ROBOT_IP, ROBOT_PORT)
 			tts.post.say('Stop avoid obstacles.')
 	elif command == COMMAND_MUSIC_ON:						# 音乐播放器打开
 		if mp3player.getFlag() == True:

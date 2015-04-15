@@ -82,7 +82,6 @@ class avoidance(threading.Thread):
 		self.sonar.unsubscribe("Class_avoidance")
 		# 机器人复位
 		self.motion.stopMove()
-		self.motion.rest()
 	def stop(self):
 		self.setflag(False)
 	def avoid_check(self):
@@ -126,14 +125,22 @@ class avoidance(threading.Thread):
 def main(robot_IP, robot_PORT=9559):
 	# ----------> avoidance <----------
 	avoid = avoidance(robot_IP, robot_PORT)
+	# 由于线程类只能调用start开启新线程一次，因此要多次使用超声波避障，需要实例化多个类；
+	avoid2 = avoidance(robot_IP, robot_PORT)
 	try:
-		avoid.start()					# start()只能执行一次; run()可以线性多次执行;
+		avoid.start()					# start()只能执行一次, 会开新线程运行; 
+										# run()可以多次执行, 但是会在本线程运行;
 		time.sleep(10)
 #		avoid.setflag(False)		 	# 方法1: 通过设置标志位为False来停止
 		avoid.stop()					# 方法2: 通过调用stop()函数停止该线程类，其内部也是设置标志位.	
+
+		avoid2.start()
+		time.sleep(10)
+		avoid2.stop()
 	except KeyboardInterrupt:
 		# 中断程序
 		avoid.stop()
+		avoid2.stop()
 		print "Interrupted by user, shutting down"
 		sys.exit(0)
 
