@@ -27,6 +27,7 @@ from unicode_tools import *				# Unicode汉字识别模块
 from avoidance_module import *			# 超声波避障模块
 from MP3_Player import *				# 音乐播放器模块
 from touch_password import *			# 触摸登录模块
+from leds import *						# LED模块
 
 import socket
 import sys      # sys.exit() 退出main函数
@@ -103,7 +104,7 @@ ROBOT_IP = '192.168.2.100'
 ROBOT_PORT = 9559
 connection = None				# socket连接
 POSTURE_CHANGE_SPEED = 0.8		# 姿势切换速度, (0~1.0)
-tts = motion = memory = battery = autonomous = posture = leds = None
+tts = motion = memory = battery = autonomous = posture = None
 sonar = None
 
 # 类示例
@@ -115,11 +116,7 @@ touch = None
 posture_list = {}
 # 全身姿势, key为各个关节名, value为关节值;
 posture_value = {}
-# ----------> Face LED List <----------
-FaceLedList = ["FaceLed0", "FaceLed1", "FaceLed2", "FaceLed3",
-               "FaceLed4", "FaceLed5", "FaceLed6", "FaceLed7"]
-ColorList = ['red', 'white', 'green', 'blue', 'yellow', 'magenta', 'cyan'] # fadeRGB()的预设值
-# <------------------------------------------------------------->
+
 def main():
 	# ----------> 命令行解析 <----------
 	global ROBOT_IP
@@ -154,33 +151,31 @@ def main():
 
 
 	# ----------> 创建Robot ALProxy Module<----------
-	global tts, motion, memory, battery, autonomous, posture, leds
+	global tts, motion, memory, battery, autonomous, posture
 	global sonar
+	global leds			# leds.py中的全局变量;
 	tts = ALProxy("ALTextToSpeech")
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
 	memory = ALProxy("ALMemory")
-	leds = ALProxy("ALLeds")
 	battery = ALProxy("ALBattery")
 	sonar = ALProxy("ALSonar")
+	leds = ALProxy("ALLeds")
 	autonomous = ALProxy("ALAutonomousLife")
 	autonomous.setState("disabled") 			# turn ALAutonomousLife off
 
 	# ----------> 自己实现的类 <----------
 	global avoid
-	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 		# 超声波避障类
-
-
+	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 	# 超声波避障类
 	global mp3player
 	mp3player = MP3player(ROBOT_IP, ROBOT_PORT)	# 音乐播放器模块
-
-
 	global touch
 	touch = touchPasswd("touch")				# 触摸登录模块
 	touch.setPassword('132312')	
 
+
 #	跳过验证
-	touch.skipVerify()
+#	touch.skipVerify()
 
 	# ----------> 开启socket服务器监听端口 <----------
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -193,6 +188,10 @@ def main():
 	try:
 		while True:		# 死循环	
 			if touch.isVerify() == True: # 通过验证则开始接受socket连接
+				setEarFlushFlag(False)
+				setFaceFlushFlag(False)
+				time.sleep(2)
+				thread.start_new_thread(LED_face_SwitchColor, (leds, 'green', 2))
 				# 等待客户端连接，单线程监听单一客户端; 
 				connection,address = sock.accept()
 				tts.say("OK, socket connected")
@@ -209,12 +208,24 @@ def main():
 				CONNECT_FLAG = False
 			else:
 				# 未通过系统验证模块, 则持续等待;
+				if LED_EAR_FLUSH_UNTIL_FLAG == False:
+					# LED配置, 未通过验证前，LED会闪烁;
+					setEarFlushFlag(True)
+					setFaceFlushFlag(True)
+					thread.start_new_thread(LED_ear_Flush_Until, (leds,))
+					thread.start_new_thread(LED_face_Flush_Until, (leds,))
 				time.sleep(1)
 	except KeyboardInterrupt:
 		print
 		print "Interrupted by user, shutting down"
+		setEarFlushFlag(False)
+		setFaceFlushFlag(False)
+		time.sleep(2)
+		thread.start_new_thread(LED_face_SwitchColor, (leds, 'yellow', 2))
+		tts.post.say('shutting down')
 		avoid.stop()				# 关闭避障
 		mp3player.stop()			# 关闭音乐
+		time.sleep(2)
 		myBroker.shutdown()			# 关闭代理Broker
 		sys.exit(0)
 
@@ -344,6 +355,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		else:
 			tts.post.say('wrong posture name.')
 	elif command == COMMAND_OBSTACLE:						# avoid obstacle
+		global avoid
 		# 接受一个COMMAND_OBSTACLE命令，切换一次避障状态;
 		if avoid.getflag() == False:
 			# 开启避障
@@ -351,7 +363,6 @@ def Operation(connection, command):	# 根据指令执行相应操作
 			avoid.start()	
 		else:
 			# 关闭避障
-			global avoid
 			avoid.stop()
 			# 需要提前再实例化一个avoidance对象，以备下次使用;
 			avoid = avoidance(ROBOT_IP, ROBOT_PORT)
@@ -463,22 +474,6 @@ def RArmMoveInit(): # 配置Right Arm 为行走初始化的姿态。
 	motion.setAngles('RWristYaw', 0, 0.2)
 	motion.setAngles('RHand', 0, 0.2)
 
-def FaceLed_Color(color='white',duration=0.1):
-	"""
-		change the color of the eyes to [color].
-        color, 颜色；
-		duration, 速度;
-	"""
-	time.sleep(1)
-	# 变色
-	for led in FaceLedList:
-		leds.post.fadeRGB(led, color, duration)
-	# 延时
-	time.sleep(3)
-	# 变回白色
-	for led in FaceLedList:
-		leds.post.fadeRGB(led, 'white', duration)
-	thread.exit_thread() # 退出线程
 def mysay(messages):
 	'''
 		控制机器人说messages
