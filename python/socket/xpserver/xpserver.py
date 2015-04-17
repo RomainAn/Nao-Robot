@@ -206,15 +206,23 @@ def main():
 				connection,address = sock.accept()
 				tts.say("OK, socket connected")
 				print "socket connected, waitting for command"
+				# 开始发送视频;
+				video.setSendFlag(True)
 				CONNECT_FLAG = True
 				while (CONNECT_FLAG == True) and (touch.isVerify() == True): # 与客户端进行通信
 					# 服务器接受指令
 					buf = connection.recv(1024)
+					if buf == '':
+						CONNECT_FLAG = False
+						break
 					print "command:[", buf, "]"
 					# 根据接受的命令执行不同操作
 					Operation(connection, buf)			
 				connection.close()  # 关闭当前socket连接，进入下一轮循环
 				connection = None
+				avoid.stop()                # 暂停避障
+				mp3player.stop()            # 暂停音乐
+				video.stop()				# 暂停视频
 				tts.say("socket connection is closed.")
 				CONNECT_FLAG = False
 			else:
