@@ -29,6 +29,7 @@ from MP3_Player import *				# 音乐播放器模块
 from touch_password import *			# 触摸登录模块
 from leds import *						# LED模块
 from video_module import *				# 视频模块
+from simsimi import *					# SimSimi
 
 import socket
 import sys      # sys.exit() 退出main函数
@@ -116,6 +117,7 @@ avoid = None
 mp3player = None
 touch = None
 video = None
+simsimi = None
 
 # 自定义姿势列表, key为自定义名称, value为全身姿势值; 
 posture_list = {}
@@ -160,6 +162,7 @@ def main():
 	global sonar
 	global leds			# leds.py中的全局变量;
 	tts = ALProxy("ALTextToSpeech")
+	tts.setLanguage("English")		
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
 	memory = ALProxy("ALMemory")
@@ -183,6 +186,9 @@ def main():
 	video.setCamera(0)
 	video.setFPS(30)
 	video.start()	# 开启视频传输服务器
+
+	global simsimi
+	simsimi = SimSimi()							# SimSimi
 
 #	跳过验证
 	touch.skipVerify()
@@ -221,8 +227,8 @@ def main():
 				connection.close()  # 关闭当前socket连接，进入下一轮循环
 				connection = None
 				avoid.stop()                # 暂停避障
-				mp3player.stop()            # 暂停音乐
 				video.stop()				# 暂停视频
+				mp3player.stop()			# 关闭音乐
 				tts.say("socket connection is closed.")
 				CONNECT_FLAG = False
 			else:
@@ -510,11 +516,14 @@ def mysay(messages):
 	if is_chinese(umesg[0]) == True:
 		if tts.getLanguage() != u'Chinese':
 			tts.setLanguage("Chinese")				# 耗时2s	
+		lang = 'ch'	# simsimi 语言配置
 	else:
 		if tts.getLanguage() != u'English':
 			tts.setLanguage("English")				# 耗时0.8s
+		lang = 'en' # simsimi 语言配置
 	# 3. 说话
-	tts.say(messages)
+#	tts.say(messages)
+	tts.say(simsimi.chat(messages, lang))
 	# 4. 切换会英语语言包，默认英语
 	tts.setLanguage("English")
 	# 5. 退出线程
