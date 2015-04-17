@@ -28,6 +28,7 @@ from avoidance_module import *			# 超声波避障模块
 from MP3_Player import *				# 音乐播放器模块
 from touch_password import *			# 触摸登录模块
 from leds import *						# LED模块
+from video_module import *				# 视频模块
 
 import socket
 import sys      # sys.exit() 退出main函数
@@ -36,6 +37,7 @@ import thread   # 多线程
 import time     # 延时函数 time.sleep(1)
 
 LISTEN_PORT = 8001 # 服务器监听端口
+VIDEO_PORT	= 8003 # 视频传输服务器端口
 # <-------------------------------------------------------------> Command 定义
 # 基本操作
 COMMAND_WAKEUP = 'WAKEUP'
@@ -93,6 +95,8 @@ COMMAND_MUSIC_DOWN	=	'MUSIC_DOWN'					# Volume Down
 COMMAND_MUSIC_FORWARD = 'MUSIC_FORWARD'					# 快进
 COMMAND_MUSIC_REWIND=	'MUSIC_REWIND'					# 快退
 COMMAND_MUSIC_URL	=	'MUSIC_URL'						# 下载音乐并播放
+# 视频传输控制命令
+COMMAND_VIDEO_SWITCH_CAMARA = 'SWITCH_CAMERA'			# 切换摄像头
 # <------------------------------------------------------------->
 # flag
 CONNECT_FLAG = False         # 客户端连接Flag    
@@ -111,6 +115,7 @@ sonar = None
 avoid = None
 mp3player = None
 touch = None
+video = None
 
 # 自定义姿势列表, key为自定义名称, value为全身姿势值; 
 posture_list = {}
@@ -172,10 +177,15 @@ def main():
 	global touch
 	touch = touchPasswd("touch")				# 触摸登录模块
 	touch.setPassword('132312')	
-
+	global video
+	video = VideoSend(ROBOT_IP, ROBOT_PORT)
+	# TopCamera:0 	/	BottomCamera:1
+	video.setCamera(0)
+	video.setFPS(30)
+	video.start()	# 开启视频传输服务器
 
 #	跳过验证
-#	touch.skipVerify()
+	touch.skipVerify()
 
 	# ----------> 开启socket服务器监听端口 <----------
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -204,6 +214,7 @@ def main():
 					# 根据接受的命令执行不同操作
 					Operation(connection, buf)			
 				connection.close()  # 关闭当前socket连接，进入下一轮循环
+				connection = None
 				tts.say("socket connection is closed.")
 				CONNECT_FLAG = False
 			else:
@@ -221,11 +232,14 @@ def main():
 		setEarFlushFlag(False)
 		setFaceFlushFlag(False)
 		time.sleep(2)
-		thread.start_new_thread(LED_face_SwitchColor, (leds, 'yellow', 2))
+		thread.start_new_thread(LED_face_SwitchColor, (leds, 'yellow', 1.5))
 		tts.post.say('shutting down')
 		avoid.stop()				# 关闭避障
 		mp3player.stop()			# 关闭音乐
+		video.close()				# 关闭视频传输模块
 		time.sleep(2)
+		if connection != None:
+			connection.close()  # 关闭当前socket连接，进入下一轮循环
 		myBroker.shutdown()			# 关闭代理Broker
 		sys.exit(0)
 
@@ -400,6 +414,9 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		print "<Music Download> URL: ", url
 		tts.post.say("Download music.")
 		mp3player.downloadMP3(filename, url)
+	elif command == COMMAND_VIDEO_SWITCH_CAMARA:			# switch camera
+		video.switchCamera()
+		print 'switch Camera'
 	else:														# error
 		print 'Error Command'
 

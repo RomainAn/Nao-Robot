@@ -21,11 +21,9 @@ import struct
 
 from naoqi import ALProxy
 
-LISTEN_PORT = 8003 		# 服务器监听端�?
+LISTEN_PORT = 8003 		# 服务器监听端口
 CONNECT = False         # 客户端连接Flag
 connection = None
-Data = None
-Adress =None
 
 def main(IP, PORT):
 	camProxy = ALProxy("ALVideoDevice", IP, PORT)
@@ -35,15 +33,15 @@ def main(IP, PORT):
 #	colorSpace = 10   # YUV
 	colorSpace = 9    # YUV422
 
-	# 程序测试经常挂掉，导致subscriberID未被取消订阅，需要更换订阅号；这里加入随�?
+	# 程序测试经常挂掉，导致subscriberID未被取消订阅，需要更换订阅号；这里加入随机;
 	subscriberID = 'send_YUV422_' + str(random.randint(0,100))
 
 	videoClient = camProxy.subscribe(subscriberID, resolution, colorSpace, 30)
 
-	# ----------> 开启socket服务器监听端�?<----------
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	# ----------> 开启socket服务器监听端口 <----------
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.bind((IP, LISTEN_PORT))
-#	sock.listen(10)
+	sock.listen(10)
 
 	naoImage = camProxy.getImageRemote(videoClient)
 	array = naoImage[6]
@@ -52,37 +50,35 @@ def main(IP, PORT):
 	print 'print test over.'
 	print '---------------------------------------------'
 
-	global address
-	global Data
+	global connection
 	try:
-		while True:
+		while True: 		# 等待客户端连接，单线程监听单一客户端
 			print 'Waiting for a connection'
-			#connection,address = sock.accept()
-			Data,address=sock.recvfrom(1024)
+			connection,address = sock.accept()
 			print 'socket client connected.'
-			print 'data:',Data
-			print 'address', address
 			CONNECT = True
 			while CONNECT == True:
+				# 发送YUV422图像至客户端
 				naoImage = camProxy.getImageRemote(videoClient)
 				array = naoImage[6]	
-#				connection.send('VIDEO#' + array + '#OVER\r')
-#				connection.send(array)
-#				sock.sendto(array,address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
+
+#				for i in range(len(array)):
+#					connection.send(array[i])
+#					if (i % 5 == 0):
+#						connection.send('\r')
+#				connection.send('\r')
+
+				connection.send(bytes(array+'\n', 'utf-8'))
+
+#				connection.send('VIDEO#' + array + '\r#OVER\r')
 				print 'send image date successful.'
-				#time.sleep(2)
+#				time.sleep(1)	
 				CONNECT = False
 			print 'socket client disconnect.'
 	except KeyboardInterrupt: # CTRL+C, 关闭服务器端程序;
 		print ""
 		print "Interrupted by user, shutting down"
 		camProxy.unsubscribe(videoClient)
-		sock.close()
 		print 'unsubscribe nao video device'
 		if connection != None:
 			connection.close()	

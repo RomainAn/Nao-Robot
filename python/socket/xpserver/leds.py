@@ -176,7 +176,7 @@ def LED_face_SwitchColor(ledsProxy, color='white', delay=3, duration=0.1):
 	'''
 	LED_face_Color(ledsProxy, color, duration)
 	time.sleep(delay)
-	LED_face_Color(ledsProxy, 'white', 0)
+	LED_face_Color(ledsProxy, 'white', duration)
 
 def LED_ear_ON(ledsProxy):
 	ledsProxy.on('EarLeds')

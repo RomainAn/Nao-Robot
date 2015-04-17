@@ -13,19 +13,11 @@
 
 import sys
 import time
-
-import Image		# Python Image Library
 import socket
 import random
-import struct
-
 from naoqi import ALProxy
 
-LISTEN_PORT = 8003 		# 服务器监听端�?
-CONNECT = False         # 客户端连接Flag
-connection = None
-Data = None
-Adress =None
+LISTEN_PORT = 8003 		# 服务器监听端口
 
 def main(IP, PORT):
 	camProxy = ALProxy("ALVideoDevice", IP, PORT)
@@ -35,68 +27,45 @@ def main(IP, PORT):
 #	colorSpace = 10   # YUV
 	colorSpace = 9    # YUV422
 
-	# 程序测试经常挂掉，导致subscriberID未被取消订阅，需要更换订阅号；这里加入随�?
+	# 程序测试经常挂掉，导致subscriberID未被取消订阅，需要更换订阅号；这里加入随机;
 	subscriberID = 'send_YUV422_' + str(random.randint(0,100))
 
 	videoClient = camProxy.subscribe(subscriberID, resolution, colorSpace, 30)
 
-	# ----------> 开启socket服务器监听端�?<----------
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	# ----------> 开启socket服务器监听端口 <----------
+#	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)		# SOCK_STREAM, TCP协议
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)			# SOCK_DGRAM, UDP协议
 	sock.bind((IP, LISTEN_PORT))
-#	sock.listen(10)
+#	sock.listen(10)			# UDP不需要连接
 
 	naoImage = camProxy.getImageRemote(videoClient)
 	array = naoImage[6]
-#	print 'VIDEO#' + array + '\r'
 	print 'image data length:', len(array) 
-	print 'print test over.'
 	print '---------------------------------------------'
 
-	global address
-	global Data
+	global connection
 	try:
-		while True:
-			print 'Waiting for a connection'
-			#connection,address = sock.accept()
-			Data,address=sock.recvfrom(1024)
-			print 'socket client connected.'
-			print 'data:',Data
-			print 'address', address
-			CONNECT = True
-			while CONNECT == True:
-				naoImage = camProxy.getImageRemote(videoClient)
-				array = naoImage[6]	
-#				connection.send('VIDEO#' + array + '#OVER\r')
-#				connection.send(array)
-#				sock.sendto(array,address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				sock.sendto('hello',address)
-				print 'send image date successful.'
-				#time.sleep(2)
-				CONNECT = False
-			print 'socket client disconnect.'
+		print 'Waiting for UDP data'
+		data,address = sock.recvfrom(2048)			# 直接等待客户端发送UDP数据
+		print 'get UDP data:', data
+		print 'address', address
+		while True: 		# 等待客户端连接，单线程监听单一客户端
+#			connection,address = sock.accept()			# UDP没有TCP这样的连接过程;
+			# 发送YUV422图像至UDP客户端
+			naoImage = camProxy.getImageRemote(videoClient)
+			array = naoImage[6]	
+			sock.sendto(array,address)
+			print 'send date successful.'
+		sock.close()
+		print 'socket close.'
 	except KeyboardInterrupt: # CTRL+C, 关闭服务器端程序;
 		print ""
 		print "Interrupted by user, shutting down"
 		camProxy.unsubscribe(videoClient)
-		sock.close()
 		print 'unsubscribe nao video device'
-		if connection != None:
-			connection.close()	
-			print 'socket connection closed.'
+		sock.close()
+		print 'socket close.'
 		sys.exit(0)
-
-
-#		imageWidth = naoImage[0]
-#  		imageHeight = naoImage[1]
-#  		array = naoImage[6]
-
-		#im = Image.fromstring("YUV", (imageWidth, imageHeight), array)
-		#im.save("camImage.png", "PNG")
-		#im.show()
 
 if __name__ == '__main__':
 	IP = "192.168.2.100"  # Replace here with your NaoQi's IP address.
