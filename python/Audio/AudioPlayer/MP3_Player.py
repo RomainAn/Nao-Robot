@@ -40,12 +40,10 @@ class MP3player(threading.Thread):
 
 		# naoqi.ALProxy
 		try:
-			self.tts = ALProxy("ALTextToSpeech", robot_ip, robot_port)
-			self.memory = ALProxy("ALMemory", robot_ip, robot_port)
-			self.leds = ALProxy("ALLeds", robot_ip, robot_port)
 			self.aup = ALProxy("ALAudioPlayer", robot_ip, robot_port)
 		except Exception, e:
-			print "Could not create proxy by ALProxy in Class MP3player"
+			print ""
+			print "class MP3player::__init__() : Could not create proxy by ALProxy"
 			print "Error: ", e
 
 		# 1. 扫描音乐文件夹，生成播放列表
@@ -54,7 +52,7 @@ class MP3player(threading.Thread):
 		if len(self.playlist) != 0:	# 至少有一首歌曲
 			self.playfileID = self.aup.loadFile(self.playlist[self.playindex])
 		else: # 一首歌曲也没有
-			print 'find: .mp3: No such file or directory'
+			print 'class MP3player::__init__() : find: .mp3: No such file or directory'
 		# 3. 等待start; 即在外部调用start()函数，会执行类函数run();
    		#	start()函数只执行一次;
 		#	start()函数中有一段死循环，用于检测播放进度以便于结束时切换下一首歌曲;
@@ -80,15 +78,15 @@ class MP3player(threading.Thread):
 		if os.path.exists(path) == True:
 			self.path = path
 		else:
-			print 'Error: Wrong music path:', path
+			print 'class MP3player::setPath() Error: Wrong music path :', path
 	def setVolume(self, volume=0.5):
 		'''音量调节, volume [0,1]'''
 		if volume >= 0 and volume <= 1:
 		   self.volume = volume
 		   self.aup.setVolume(self.playfileID, self.volume)
-		   print 'Music Volume:', self.volume * 100, '%'
+		   print '<Music Volume>:', self.volume * 100, '%'
 		else:
-			print 'setVolume() Error: wrong volume(should in [0,1])'
+			print 'class MP3player::setVolume() Error: wrong volume'
 	def upVolume(self, change=0.05):
 		'''
 			增大音量，每次增量change默认为0.05
@@ -107,7 +105,7 @@ class MP3player(threading.Thread):
 			pass
 	def nextSong(self):	
 		self.playindex = (self.playindex + 1) % len(self.playlist)
-		print 'Next Song:', self.playlist[self.playindex]
+		print '<Music Next Song>:', self.playlist[self.playindex]
 		if self.playflag == False:	# 暂停状态下的下一首, 仅载入音乐
 			self.playfileID = self.aup.loadFile(self.playlist[self.playindex])
 		else:						# 播放状态下的下一首, 暂停, 切换下一首音乐
@@ -116,7 +114,7 @@ class MP3player(threading.Thread):
 			self.play()
 	def previousSong(self):
 		self.playindex = (self.playindex + len(self.playlist) - 1) % len(self.playlist)
-		print 'Previous Song:', self.playlist[self.playindex]
+		print '<Music Previous Song>:', self.playlist[self.playindex]
 		if self.playflag == False:	# 暂停状态下的上一首, 仅载入音乐
 			self.playfileID = self.aup.loadFile(self.playlist[self.playindex])
 		else:						# 播放状态下的上一首, 暂停, 切换上一首音乐
@@ -148,12 +146,12 @@ class MP3player(threading.Thread):
 		'''
 		if self.playflag == False and flag == True:
 			# 播放音乐
-			print 'Music Play'
+			print '<Music Play>'
 			self.playflag = flag
 			self.aup.post.playInLoop(self.playfileID, self.volume, 0)
 		elif self.playflag == True and flag == False:
 			# 停止音乐
-			print 'Music Pause'
+			print '<Music Pause>'
 			self.playflag = flag
 			self.aup.pause(self.playfileID)
 		else:
@@ -166,7 +164,7 @@ class MP3player(threading.Thread):
 		if position + seconds < self.aup.getFileLength(self.playfileID):	
 			# 可以快进
 			self.aup.goTo(self.playfileID, position + seconds)
-			print "Position >>:", self.aup.getCurrentPosition(self.playfileID)
+			print "Music Position >> ", self.aup.getCurrentPosition(self.playfileID)
 		else:
 			# 快进到歌曲结束，直接下一首
 			self.nextSong()
@@ -181,7 +179,7 @@ class MP3player(threading.Thread):
 		else:
 			# 重新播放歌曲
 			self.aup.goTo(self.playfileID, 0)
-		print "Position <<:", self.aup.getCurrentPosition(self.playfileID)
+		print "Music Position << ", self.aup.getCurrentPosition(self.playfileID)
 
 	def scanMP3(self):
 		'''在音乐文件夹中寻找mp3格式的音乐，加入播放列表'''
@@ -201,9 +199,10 @@ class MP3player(threading.Thread):
 		'''
 		try:
 			# 使用urllib下载音乐
-			print '>>> Start to download music [%s]' % name
+			print "<Music Download> Name:", name
+			print "<Music Download> URL: ", url
 			urllib.urlretrieve(url, self.path + name + '.mp3')
-			print '>>> Download Completed'
+			print '<Music Download> Status: Download Completed!'
 			# 将下载好的音乐添加在播放列表中
 			self.playlist.append(self.path + name + '.mp3')
 			# 切换音乐
@@ -213,7 +212,7 @@ class MP3player(threading.Thread):
 				self.play()
 		except Exception,e:
 		   print 'Exception:',e
-		   print 'downloadMP3()'
+		   print 'class MP3player::downloadMP3()'
 
 
 def main(robot_IP, robot_PORT=9559):

@@ -22,3 +22,5 @@
 /python/set_python_path.sh
 
 *.txt
+
+python/socket/xpserver/settings.py

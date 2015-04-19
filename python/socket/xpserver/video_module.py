@@ -8,7 +8,7 @@
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/04/15 >
 #	> Last Changed: 
-#	> Description:
+#	> Description:		VideoSend类, 实现NAO机器人的视频发送功能
 #################################################################
 
 import argparse
@@ -21,10 +21,9 @@ import time
 import sys
 import threading        # 多线程类
 
-
 class VideoSend(threading.Thread):
 	'''
-		创建线程类 - VideoSend, 实现NAO机器人的视频功能
+		创建线程类 - VideoSend, 实现NAO机器人的视频发送功能
 		run()功能：开启特定端口的服务器，等待连接；客户端连接后，向客户端发送图像数据;
 	'''
 	def __init__(self, robot_ip, robot_port=9559):
@@ -32,7 +31,6 @@ class VideoSend(threading.Thread):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		# -----------------------------------类成员变量
-		
 		# 订阅模块的订阅名称，取消订阅时要用; 
 		# 因为调试代码常挂掉程序，没有取消订阅，无法再次订阅相同名称，因此这里加入随机化.
 		self.nameID = "video_VM_" + str(random.randint(0,100))
@@ -92,7 +90,7 @@ class VideoSend(threading.Thread):
 		try:
 			self.video = ALProxy("ALVideoDevice", robot_ip, robot_port)
 		except Exception, e:
-			print "Could not create proxy by ALProxy in Class MP3player"
+			print "class VideoSend::__init__() Could not create proxy by ALProxy"
 			print "Error: ", e
 			
 	def run(self):
@@ -110,7 +108,7 @@ class VideoSend(threading.Thread):
 				if self.protocol == 'TCP':
 					# 等待TCP客户端连接，单线程监听单一客户端
 					connection,address = self.sock.accept()
-					print 'get TCP client address:', address
+					print '<VideoSend> get TCP client address:', address
 					self.connect_flag = True
 					while self.connect_flag == True and self.send_flag == True:
 						# 发送图像至客户端
@@ -121,10 +119,11 @@ class VideoSend(threading.Thread):
 						connection.send(array)
 					# 断开客户端连接
 					connection.close()
+					print '<VideoSend> TCP server socket close.'
 				else:		# UDP
 					# 等待UDP客户端连接, 获得UDP客户端地址; 
 					data,address = self.sock.recvfrom(2048) # 直接等待客户端发送UDP数据
-					print 'get UDP client address:', address
+					print '<VideoSend> get UDP client address:', address
 					self.connect_flag = True
 					while self.connect_flag == True and self.send_flag == True:
 						# 发送图像至客户端
@@ -133,31 +132,44 @@ class VideoSend(threading.Thread):
 						# 2. 发送图像数据
 						array = image[6]
 						self.sock.sendto(array,address)
+					print '<VideoSend> UDP server socket close.'
 			else:	# 不发送数据, 则延时等待;
 				time.sleep(1)
 	def stop(self):
 		'''停止发送图像数据'''		   
 		# 断开客户端连接
+		print '<VideoSend> - close socket connection'
 		self.connect_flag = False
 		# 停止发送数据
-		self.send_flag = False
+		self.setSendFlag(False)
 	def close(self):
 		'''关闭类'''
 		self.stop()
 		time.sleep(1)	# 等待停止
 		self.unsubscribeCamera()
 	def setSendFlag(self, bools):
-		self.send_flag = bools
+		if self.send_flag == False and bools == True:
+			# 开始发送视频
+			print '<VideoSend> - start send video'
+			self.send_flag = bools
+		elif self.send_flag == True and bools == False:
+			# 停止发送视频
+			print '<VideoSend> - stop send video'
+			self.send_flag = bools
+		else:
+			pass
 	def setCamera(self, index):
 		'''设置摄像头, 只有两个选择, 0/1'''
 		if index == self.TopCamera:
+		   print '<VideoSend> - Top Camera'
 		   self.cameraIndex = self.TopCamera
 		   self.subscriberID = self.subscriberID_Top
 		elif index == self.BottomCamera:
+		   print '<VideoSend> - Bottom Camera'
 		   self.cameraIndex = self.BottomCamera
 		   self.subscriberID = self.subscriberID_Bottom
 		else:
-		   print 'Error Camera Index.'
+		   print 'class VideoSend::setCamera() - Error Camera Index.'
 	def switchCamera(self):
 		'''切换摄像头'''
 		if self.cameraIndex == self.TopCamera:
@@ -174,11 +186,12 @@ class VideoSend(threading.Thread):
 		if fps > 0 and fps <= 30:
 			self.fps = fps
 		else:
-			print 'Error fps'
+			print 'class VideoSend::setFPS() - Error fps'
 	def subscribeCamera(self):
 		'''订阅相应参数的视频'''
 		# You only have to call the "subscribe" function with those parameters and
 		# ALVideoDevice will be in charge of driver initialization and buffer's management.
+		# 提前订阅两个, 一个为TopCamera, 一个为BottomCamera, 便于镜头切换;
 		self.subscriberID_Top = self.video.subscribeCamera(	self.nameID,
 										self.TopCamera,
 										self.resolution,
@@ -222,13 +235,6 @@ class VideoSend(threading.Thread):
 		print "image.getHeight:", image[1]
 		print "image.getNbLayers:", image[2]
 		print "list.length:", len(image)
-
-		# 保存图片数据
-#		filename = 'data.yuv422' 
-#		print 'save image to', filename
-#		outputfile = open(filename, 'wb')
-#		outputfile.write(image[6])
-#		outputfile.close()
 
 def main(robot_IP, robot_PORT=9559):
 	try:

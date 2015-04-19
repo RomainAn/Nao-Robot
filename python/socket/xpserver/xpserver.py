@@ -7,17 +7,27 @@
 #	> Author:           < Sean Guo >		
 #	> Mail:             < iseanxp+code@gmail.com >		
 #	> Created Time:     < 2015/03/26 >
-#	> Last Changed:		< 2015/04/14 >
+#	> Last Changed:		< 2015/04/18 >
 #	> Description:		Nao Robot 远程控制-服务器端
+#
 #						接受客户端发来的指令，执行相应功能。
 #						自动载入该模块，自动载入配置文件：/home/nao/naoqi/preferences/autoload.ini
 #
-#						python xpserver.py --pip '192.168.2.100' --pport 9559
+#						Usage:
+#							python xpserver.py --pip '192.168.2.100' --pport 9559
+#							--pip, nao robot ip;
+#							--pport, nao robot port(default port 9559);
 #################################################################
 
 import sys
 import time
+import socket
+import sys      # sys.exit() 退出main函数
+import almath   # 角度转弧度(almath.TO_RAD)
+import thread   # 多线程
+import time     # 延时函数 time.sleep(1)
 from optparse import OptionParser
+
 from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
@@ -29,16 +39,12 @@ from MP3_Player import *				# 音乐播放器模块
 from touch_password import *			# 触摸登录模块
 from leds import *						# LED模块
 from video_module import *				# 视频模块
-from simsimi import *					# SimSimi
+from ChatRobot import *					# 聊天机器人
 
-import socket
-import sys      # sys.exit() 退出main函数
-import almath   # 角度转弧度(almath.TO_RAD)
-import thread   # 多线程
-import time     # 延时函数 time.sleep(1)
 
-LISTEN_PORT = 8001 # 服务器监听端口
-VIDEO_PORT	= 8003 # 视频传输服务器端口
+# <----------------- socket port ----------------> 
+LISTEN_PORT = 8001 			# 服务器监听端口
+VIDEO_SERVER_PORT = 8003 	# 视频传输服务器端口
 # <-------------------------------------------------------------> Command 定义
 # 基本操作
 COMMAND_WAKEUP = 'WAKEUP'
@@ -107,17 +113,19 @@ POSTURE_RECORD_FLAG = False		 # 自定义姿势录制Flag
 # 全局变量，供其他函数使用
 ROBOT_IP = '192.168.2.100'
 ROBOT_PORT = 9559
+
 connection = None				# socket连接
 POSTURE_CHANGE_SPEED = 0.8		# 姿势切换速度, (0~1.0)
-tts = motion = memory = battery = autonomous = posture = None
-sonar = None
 
-# 类示例
+# naoqi proxy module
+tts = motion = memory = battery = autonomous = posture = sonar = None
+
+# 类实例
 avoid = None
 mp3player = None
 touch = None
 video = None
-simsimi = None
+chatrobot = None
 
 # 自定义姿势列表, key为自定义名称, value为全身姿势值; 
 posture_list = {}
@@ -144,6 +152,7 @@ def main():
 	pport = opts.pport
 
 	# 如果运行前指定ip参数，则更新ROBOT_IP全局变量;
+	# 其他模块会用到ROBOT_IP变量;
 	ROBOT_IP = pip
 
 	# ----------> 创建python broker <----------
@@ -158,19 +167,20 @@ def main():
 
 
 	# ----------> 创建Robot ALProxy Module<----------
-	global tts, motion, memory, battery, autonomous, posture
-	global sonar
+	global tts, motion, memory, battery, autonomous, posture, sonar
 	global leds			# leds.py中的全局变量;
 	tts = ALProxy("ALTextToSpeech")
-	tts.setLanguage("English")		
+	# 默认为英语语言包
+	tts.setLanguage("English")
 	motion = ALProxy("ALMotion")
 	posture = ALProxy("ALRobotPosture")
 	memory = ALProxy("ALMemory")
 	battery = ALProxy("ALBattery")
 	sonar = ALProxy("ALSonar")
 	leds = ALProxy("ALLeds")
+	# turn ALAutonomousLife off
 	autonomous = ALProxy("ALAutonomousLife")
-	autonomous.setState("disabled") 			# turn ALAutonomousLife off
+	autonomous.setState("disabled") 			
 
 	# ----------> 自己实现的类 <----------
 	global avoid
@@ -186,11 +196,12 @@ def main():
 	video.setCamera(0)
 	video.setFPS(30)
 	video.start()	# 开启视频传输服务器
+	global chatrobot
+	chatrobot = ChatRobot()						# Chat robot
+#	chatrobot.setRobot('SIMSIMI')
+	chatrobot.setRobot('TULING')
 
-	global simsimi
-	simsimi = SimSimi()							# SimSimi
-
-#	跳过验证
+#	跳过验证, 便于调试程序
 	touch.skipVerify()
 
 	# ----------> 开启socket服务器监听端口 <----------
@@ -424,9 +435,7 @@ def Operation(connection, command):	# 根据指令执行相应操作
 		index = buf.find('http')
 		filename = buf[:index]
 		url = buf[index:]
-		print "<Music Download> Name:", filename
-		print "<Music Download> URL: ", url
-		tts.post.say("Download music.")
+		tts.post.say("Downloading music")
 		mp3player.downloadMP3(filename, url)
 	elif command == COMMAND_VIDEO_SWITCH_CAMARA:			# switch camera
 		video.switchCamera()
@@ -516,14 +525,14 @@ def mysay(messages):
 	if is_chinese(umesg[0]) == True:
 		if tts.getLanguage() != u'Chinese':
 			tts.setLanguage("Chinese")				# 耗时2s	
-		lang = 'ch'	# simsimi 语言配置
+		lang = 'ch'	# 语言记录
 	else:
 		if tts.getLanguage() != u'English':
 			tts.setLanguage("English")				# 耗时0.8s
-		lang = 'en' # simsimi 语言配置
+		lang = 'en'
 	# 3. 说话
 #	tts.say(messages)
-	tts.say(simsimi.chat(messages, lang))
+	tts.say(chatrobot.chat(messages, lang))			# Chat Robot Talk
 	# 4. 切换会英语语言包，默认英语
 	tts.setLanguage("English")
 	# 5. 退出线程

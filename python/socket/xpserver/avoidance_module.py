@@ -9,18 +9,18 @@
 #	> Created Time:     < 2015/04/08 >
 #	> Last Changed: 	< 2015/04/13 >
 #	> Description:		超声波避障模块
-#						1.作为类使用，则import该文件，使用avoidance类;
+#						1.作为类使用，则import该文件，使用avoidance类; 用法见main();
 #						2.也可直接python avoidance_module.py, 直接运行超声波避障功能;
 #################################################################
 """
 	超声波避障模块
 """
-import argparse
-import time
-from naoqi import ALProxy
 import sys
+import time
 import almath			# almath.TO_RAD, 角度转弧度
+import argparse			# 参数解析
 import threading    	# 多线程类
+from naoqi import ALProxy
 
 class avoidance(threading.Thread):
 	'''
@@ -125,15 +125,17 @@ class avoidance(threading.Thread):
 def main(robot_IP, robot_PORT=9559):
 	# ----------> avoidance <----------
 	avoid = avoidance(robot_IP, robot_PORT)
-	# 由于线程类只能调用start开启新线程一次，因此要多次使用超声波避障，需要实例化多个类；
-	avoid2 = avoidance(robot_IP, robot_PORT)
 	try:
 		avoid.start()					# start()只能执行一次, 会开新线程运行; 
 										# run()可以多次执行, 但是会在本线程运行;
+		# start()开新线程, 非阻塞, 因此这里延时一段时间以执行避障;
 		time.sleep(10)
 #		avoid.setflag(False)		 	# 方法1: 通过设置标志位为False来停止
 		avoid.stop()					# 方法2: 通过调用stop()函数停止该线程类，其内部也是设置标志位.	
 
+		# 想要再次开启避障，需要再新建一个类对象
+		# 由于线程类只能调用start开启新线程一次，因此要多次使用超声波避障，需要实例化多个类；
+		avoid2 = avoidance(robot_IP, robot_PORT)
 		avoid2.start()
 		time.sleep(10)
 		avoid2.stop()
