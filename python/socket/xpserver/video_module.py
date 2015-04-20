@@ -137,11 +137,13 @@ class VideoSend(threading.Thread):
 				time.sleep(1)
 	def stop(self):
 		'''停止发送图像数据'''		   
-		# 断开客户端连接
-		print '<VideoSend> - close socket connection'
-		self.connect_flag = False
-		# 停止发送数据
-		self.setSendFlag(False)
+		if self.connect_flag == True:
+			# 断开客户端连接
+			print '<VideoSend> - close socket connection'
+			self.connect_flag = False
+		if self.send_flag == True:
+			# 停止发送数据
+			self.setSendFlag(False)
 	def close(self):
 		'''关闭类'''
 		self.stop()
@@ -161,11 +163,11 @@ class VideoSend(threading.Thread):
 	def setCamera(self, index):
 		'''设置摄像头, 只有两个选择, 0/1'''
 		if index == self.TopCamera:
-		   print '<VideoSend> - Top Camera'
+		   print '<VideoSend> - Set Top Camera'
 		   self.cameraIndex = self.TopCamera
 		   self.subscriberID = self.subscriberID_Top
 		elif index == self.BottomCamera:
-		   print '<VideoSend> - Bottom Camera'
+		   print '<VideoSend> - Set Bottom Camera'
 		   self.cameraIndex = self.BottomCamera
 		   self.subscriberID = self.subscriberID_Bottom
 		else:
@@ -205,10 +207,14 @@ class VideoSend(threading.Thread):
 	def unsubscribeCamera(self):
 		# Release image buffer locked by getImageLocal(). 
 		# If module had no locked image buffer, does nothing.
-		self.video.releaseImage(self.subscriberID_Top)
-		self.video.unsubscribe(self.subscriberID_Top)
-		self.video.releaseImage(self.subscriberID_Bottom)
-		self.video.unsubscribe(self.subscriberID_Bottom)
+		if self.subscriberID_Top != None:
+			self.video.releaseImage(self.subscriberID_Top)
+			self.video.unsubscribe(self.subscriberID_Top)
+			self.subscriberID_Top = None
+		if self.subscriberID_Bottom != None:
+			self.video.releaseImage(self.subscriberID_Bottom)
+			self.video.unsubscribe(self.subscriberID_Bottom)
+			self.subscriberID_Bottom = None
 	def getImageRemote(self):
 		''' 
 			获得一张图像
