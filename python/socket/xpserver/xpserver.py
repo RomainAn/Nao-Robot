@@ -185,17 +185,21 @@ def main():
 	# ----------> 自己实现的类 <----------
 	global avoid
 	avoid = avoidance(ROBOT_IP, ROBOT_PORT) 	# 超声波避障类
+
 	global mp3player
 	mp3player = MP3player(ROBOT_IP, ROBOT_PORT)	# 音乐播放器模块
+	
 	global touch
 	touch = touchPasswd("touch")				# 触摸登录模块
 	touch.setPassword('132312')	
+	
 	global video
 	video = VideoSend(ROBOT_IP, ROBOT_PORT)
 	# TopCamera:0 	/	BottomCamera:1
 	video.setCamera(0)
 	video.setFPS(30)
 	video.start()	# 开启视频传输服务器
+	
 	global chatrobot
 	chatrobot = ChatRobot()						# Chat robot
 #	chatrobot.setRobot('SIMSIMI')
