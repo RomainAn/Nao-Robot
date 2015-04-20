@@ -30,7 +30,9 @@ def showNaoImage(IP, PORT):
   resolution = 2    # VGA
   colorSpace = 11   # RGB
 
-  videoClient = camProxy.subscribe("python_client", resolution, colorSpace, 5)
+#  videoClient = camProxy.subscribe("python_client",resolution, colorSpace, 5)
+#  videoClient = camProxy.subscribe("python_client",0, resolution, colorSpace, 5)
+  videoClient = camProxy.subscribeCamera('python_client',0,resolution, colorSpace, 5)
 
   t0 = time.time()
 
@@ -65,7 +67,7 @@ def showNaoImage(IP, PORT):
 
 
 if __name__ == '__main__':
-  IP = "192.168.1.100"  # Replace here with your NaoQi's IP address.
+  IP = "192.168.2.100"  # Replace here with your NaoQi's IP address.
   PORT = 9559
 
   # Read IP address from first argument if any.
