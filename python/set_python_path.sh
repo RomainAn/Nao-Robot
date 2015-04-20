@@ -11,5 +11,5 @@
 #################################################################
 
 
-export PYTHONPATH=${PYTHONPATH}:~/Code/Nao-Robot/python/pynaoqi-python2.7-2.1.2.17-mac64
-export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:~/Code/Nao-Robot/python/pynaoqi-python2.7-2.1.2.17-mac64
+export PYTHONPATH=${PYTHONPATH}:~/Code/Nao-Robot/python/pynaoqi-python2.7-2.1.3.3-mac64
+export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:~/Code/Nao-Robot/python/pynaoqi-python2.7-2.1.3.3-mac64
