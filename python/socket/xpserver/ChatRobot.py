@@ -14,8 +14,6 @@
 
 import sys
 import requests
-from simsimi import *
-
 try:
 	# 从当前目录的settings.py中尝试读取Chat Robot API KEY
 	# api key在聊天机器人的官网申请或购买;
@@ -61,13 +59,13 @@ class ChatRobot():
 				payload = {'key':self.api_key, 'lc':language, 'ft':1.0, 'text':message}
 				response = self.session.get(self.api_url, params=payload)
 				answer = response.json()['response']
-				return answer
+				return answer.encode('UTF-8')		# answer为unicode格式, 这里编码为str;
 			elif self.robot == self.TULING_NAME:
 				# Tuling
 				payload = {'key':self.api_key, 'info':message}
 				response = self.session.get(self.api_url, params=payload)
 				answer = response.json()['text']
-				return answer
+				return answer.encode('UTF-8')
 			else:
 				pass
 		except:
@@ -80,7 +78,9 @@ def main():
 	try:
 		while True:
 			megs = raw_input('输入:')
-			print chatrobot.chat(megs)
+			answer = chatrobot.chat(megs)
+			print answer
+#			print type(answer)
 	except KeyboardInterrupt:
 		print ""
 		print "Interrupted by user, shutting down"
