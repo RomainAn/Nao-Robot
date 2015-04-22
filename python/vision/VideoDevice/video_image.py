@@ -207,6 +207,10 @@ class VideoImage(threading.Thread):
 		print '<VideoImage> - save image to', image_filename
 		image.save(image_filename, image_format)
 		image.show()
+	def takeImage(self, number):
+		for num in range(number):
+			naoImage = self.video.getImageRemote(self.subscriberID)
+			self.saveImage(naoImage[6], naoImage[0], naoImage[1], 'RGB', 'PNG', 'camImage'+str(num)+'.png')
 	def cameraSpeedTest(self, cameraIndex=0):
 		'''Test Camera Speed'''
 		if cameraIndex == self.TopCamera:
@@ -242,14 +246,16 @@ def main(robot_IP, robot_PORT=9559):
 		video = VideoImage(robot_IP, robot_PORT)
 		video.addXtionCamera()
 		video.subscribeCamera()	
-#		video.setCamera(0)		# top camera
+		video.setCamera(0)		# top camera
 #		video.setCamera(1)		# bottom camera
 #		video.setCamera(2)		# xtion camera (optional)
 #		video.getImageInfo()
 		
-		video.cameraSpeedTest(0)	
-		video.cameraSpeedTest(1)	
-		video.cameraSpeedTest(2)	
+		video.takeImage(20)
+
+#		video.cameraSpeedTest(0)	
+#		video.cameraSpeedTest(1)	
+#		video.cameraSpeedTest(2)	
 #		video.start()
 #		time.sleep(200)
 		video.close()
