@@ -195,7 +195,10 @@ def main():
 	
 	global video
 	video = VideoSend(ROBOT_IP, ROBOT_PORT)
+
 	# TopCamera:0 	/	BottomCamera:1
+	# XtionCamera: 2 (optional)
+#	video.addXtionCamera()
 	video.setCamera(0)
 	video.setFPS(30)
 	video.start()	# 开启视频传输服务器

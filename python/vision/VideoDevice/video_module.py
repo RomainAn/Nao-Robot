@@ -38,6 +38,7 @@ class VideoSend(threading.Thread):
 		# Camera indexes, 选择摄像头
 		self.TopCamera = 0
 		self.BottomCamera = 1
+		self.XtionCamera = 2			# Xtion Pro Live Depth Camera
 		self.cameraIndex = self.TopCamera
 
 		# 分辨率:
@@ -65,6 +66,8 @@ class VideoSend(threading.Thread):
 		self.subscriberID_Top = None
 		# 底部摄像头订阅
 		self.subscriberID_Bottom = None
+		# xtion camera
+		self.subscriberID_Xtion = None
 		
 		# socket 协议, 支持UDP与TCP
 		self.protocol = 'UDP'
@@ -85,6 +88,9 @@ class VideoSend(threading.Thread):
 		self.connect_flag = False
 		# 发送数据标志位
 		self.send_flag = False
+		# xtion camera flag, 如果机器人连接Xtion Pro Live, 则调用API:addXtionCamera()设为True;
+		# xtion: 支持分辨率QQVGA_160, QVGA_320.
+		self.Xtion_flag = False
 
 		# naoqi.ALProxy
 		try:
@@ -99,7 +105,8 @@ class VideoSend(threading.Thread):
 		'''
 		# 1. 订阅相应配置的视频数据
 		self.subscribeCamera()
-		self.setCamera(self.TopCamera)
+		if self.subscriberID == None:
+			self.setCamera(self.TopCamera)
 		# 2. 设置发送标志位
 		self.send_flag = True
 		# 3. 循环发送
@@ -160,8 +167,10 @@ class VideoSend(threading.Thread):
 			self.send_flag = bools
 		else:
 			pass
+	def addXtionCamera(self):
+		self.Xtion_flag = True
 	def setCamera(self, index):
-		'''设置摄像头, 只有两个选择, 0/1'''
+		'''设置摄像头'''
 		if index == self.TopCamera:
 		   print '<VideoSend> - Set Top Camera'
 		   self.cameraIndex = self.TopCamera
@@ -170,12 +179,21 @@ class VideoSend(threading.Thread):
 		   print '<VideoSend> - Set Bottom Camera'
 		   self.cameraIndex = self.BottomCamera
 		   self.subscriberID = self.subscriberID_Bottom
+		elif index == self.XtionCamera and self.Xtion_flag == True:
+		   print '<VideoSend> - Set Xtion Camera'
+		   self.cameraIndex = self.XtionCamera
+		   self.subscriberID = self.subscriberID_Xtion
 		else:
 		   print 'class VideoSend::setCamera() - Error Camera Index.'
 	def switchCamera(self):
 		'''切换摄像头'''
 		if self.cameraIndex == self.TopCamera:
 			self.setCamera(self.BottomCamera)
+		elif self.cameraIndex == self.BottomCamera:
+			if self.Xtion_flag == True:
+				self.setCamera(self.XtionCamera)
+			else:
+				self.setCamera(self.TopCamera)
 		else:
 			self.setCamera(self.TopCamera)
 	def getCamera(self):
@@ -204,6 +222,12 @@ class VideoSend(threading.Thread):
 										self.resolution,
 										self.colorSpace,
 										self.fps)
+		if self.Xtion_flag == True:
+			self.subscriberID_Xtion = self.video.subscribeCamera(	self.nameID,
+											self.XtionCamera,
+											self.resolution,
+											self.colorSpace,
+											self.fps)
 	def unsubscribeCamera(self):
 		# Release image buffer locked by getImageLocal(). 
 		# If module had no locked image buffer, does nothing.
@@ -215,6 +239,10 @@ class VideoSend(threading.Thread):
 			self.video.releaseImage(self.subscriberID_Bottom)
 			self.video.unsubscribe(self.subscriberID_Bottom)
 			self.subscriberID_Bottom = None
+		if self.Xtion_flag == True and self.subscriberID_Xtion != None:
+			self.video.releaseImage(self.subscriberID_Xtion)
+			self.video.unsubscribe(self.subscriberID_Xtion)
+			self.subscriberID_Xtion = None
 	def getImageRemote(self):
 		''' 
 			获得一张图像
@@ -245,6 +273,7 @@ class VideoSend(threading.Thread):
 def main(robot_IP, robot_PORT=9559):
 	try:
 		video = VideoSend(robot_IP, robot_PORT)
+		video.addXtionCamera()
 		video.start()
 		time.sleep(200)
 		video.close()
