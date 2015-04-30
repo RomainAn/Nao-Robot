@@ -190,7 +190,7 @@ class VideoImage(threading.Thread):
 		print 'colorspace of the image:	', image[3]
 		print 'time stamp (second):		', image[4]
 		print 'time stamp (microsecond):', image[5]
-		print 'data of the image (ignore to print). - image[6]'
+		print 'data of the image (ignore to print). - image[6]', len(image[6])
 		print 'camera ID:				', image[7]	
 		print 'camera FOV left angle:	', image[8]
 		print 'camera FOV top angle:	', image[9]
@@ -246,12 +246,12 @@ def main(robot_IP, robot_PORT=9559):
 		video = VideoImage(robot_IP, robot_PORT)
 		video.addXtionCamera()
 		video.subscribeCamera()	
-		video.setCamera(0)		# top camera
+#		video.setCamera(0)		# top camera
 #		video.setCamera(1)		# bottom camera
-#		video.setCamera(2)		# xtion camera (optional)
-#		video.getImageInfo()
+		video.setCamera(2)		# xtion camera (optional)
+		video.getImageInfo()
 		
-		video.takeImage(20)
+#	video.takeImage(20)
 
 #		video.cameraSpeedTest(0)	
 #		video.cameraSpeedTest(1)	
