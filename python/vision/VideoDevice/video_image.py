@@ -276,16 +276,16 @@ class VideoImage(threading.Thread):
 def main(robot_IP, robot_PORT=9559):
 	try:
 		video = VideoImage(robot_IP, robot_PORT)
-		video.addXtionCamera()
+#		video.addXtionCamera()
 #		video.setResolution(160)
 		video.subscribeCamera()	
 		video.setCamera(0)		# top camera
 #		video.setCamera(1)		# bottom camera
 #		video.setCamera(2)		# xtion camera (optional)
-#		video.getImageInfo()
+		video.getImageInfo()
 		
-#	video.takeImage(20)
-		video.takeRGBDimage(2000)
+#		video.takeImage(20)
+#		video.takeRGBDimage(2000)
 
 #		video.cameraSpeedTest(0)	
 #		video.cameraSpeedTest(1)	
